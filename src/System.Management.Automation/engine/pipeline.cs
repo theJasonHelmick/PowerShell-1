@@ -9,6 +9,7 @@ using System.Management.Automation.Runspaces;
 using Dbg = System.Management.Automation.Diagnostics;
 using System.Management.Automation.Tracing;
 using System.Runtime.ExceptionServices;
+using System.Management.Automation.Internal;
 
 #pragma warning disable 1634, 1691 // Stops compiler from warning about unknown warnings
 
@@ -196,7 +197,10 @@ namespace System.Management.Automation.Internal
 
         private void Log(string logElement, InvocationInfo invocation, PipelineExecutionStatus pipelineExecutionStatus)
         {
-            System.IO.File.AppendAllText("/tmp/zapped",String.Format("{0} -- {1}\n", DateTime.Now, logElement));
+            if ( InternalTestHooks.LogPipelineCommandToFile && InternalTestHooks.PipelineLogFile != String.Empty ) 
+            {
+                System.IO.File.AppendAllText(InternalTestHooks.PipelineLogFile,String.Format("{0} -- {1}\n", DateTime.Now, GetCommand(invocation)));
+            }
             System.Management.Automation.Host.PSHostUserInterface hostInterface = null;
             if (this.LocalPipeline != null)
             {

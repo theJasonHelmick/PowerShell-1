@@ -1564,6 +1564,9 @@ namespace System.Management.Automation.Internal
         internal static bool ForceScriptBlockLogging;
         internal static bool UseDebugAmsiImplementation;
         internal static bool BypassAppLockerPolicyCaching;
+        // used by logging code in pipeline.cs
+        internal static bool LogPipelineCommandToFile;
+        internal static string PipelineLogFile = String.Empty;
         // It's useful to test that we don't depend on the ScriptBlock and AST objects and can use a re-parsed version.
         internal static bool IgnoreScriptBlockCache;
 
@@ -1576,5 +1579,16 @@ namespace System.Management.Automation.Internal
                 fieldInfo.SetValue(null, value);
             }
         }
+
+        /// <summary>This member is used for internal test purposes.</summary>
+        public static void SetTestHook(string property, string value)
+        {
+            var fieldInfo = typeof(InternalTestHooks).GetField(property, BindingFlags.Static | BindingFlags.NonPublic);
+            if (fieldInfo != null)
+            {
+                fieldInfo.SetValue(null, value);
+            }
+        }
+
     }
 }
