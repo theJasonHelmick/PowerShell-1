@@ -1457,9 +1457,11 @@ namespace System.Management.Automation.Tracing
     {
         static internal void LogAnalyticError(PSEventId id, PSOpcode opcode, PSTask task, PSKeyword keyword, params object[] args) 
         { 
+            System.Diagnostics.Debug.Write(String.Format("LogAnalyticError:{0} Keyword:{1}", id, keyword));
         }
         static internal void LogAnalyticWarning(PSEventId id, PSOpcode opcode, PSTask task, PSKeyword keyword, params object[] args) 
         { 
+            System.Diagnostics.Debug.Write(String.Format("LogAnalyticWarning:{0} Keyword:{1}", id, keyword));
         }
         static internal void LogAnalyticVerbose(PSEventId id, PSOpcode opcode, PSTask task, PSKeyword keyword,
             Int64 objectId,
@@ -1469,33 +1471,43 @@ namespace System.Management.Automation.Tracing
             UInt32 fragmentLength,
             PSETWBinaryBlob fragmentData)
         { 
+            System.Diagnostics.Debug.Write(String.Format("LogAnalyticVerbose:{0} Keyword:{1}", id, keyword));
         }
         static internal void LogAnalyticVerbose(PSEventId id, PSOpcode opcode, PSTask task, PSKeyword keyword, params object[] args) 
         { 
+            System.Diagnostics.Debug.Write(String.Format("LogAnalyticVerbose:{0} Keyword:{1}", id, keyword));
         }
         static internal void SetActivityIdForCurrentThread(Guid newActivityId) 
         { 
+            System.Diagnostics.Debug.Write(String.Format("SetActivityId:{0}", newActivityId));
         }
         static internal void LogOperationalVerbose(PSEventId id, PSOpcode opcode, PSTask task, PSKeyword keyword, params object[] args) 
         { 
+            System.Diagnostics.Debug.Write(String.Format("LogOperationalVerbose:{0} Keyword:{1}", id, keyword));
         }
         static internal void LogOperationalWarning(PSEventId id, PSOpcode opcode, PSTask task, PSKeyword keyword, params object[] args) 
         { 
+            System.Diagnostics.Debug.Write(String.Format("LogOperationalWarning:{0} Keyword:{1}", id, keyword));
         }
         static internal void ReplaceActivityIdForCurrentThread(Guid newActivityId, PSEventId eventForOperationalChannel, PSEventId eventForAnalyticChannel, PSKeyword keyword, PSTask task) 
         { 
+            System.Diagnostics.Debug.Write(String.Format("ReplaceActivityId:{0} Keyword:{1}", newActivityId, keyword));
         }
         static internal void LogOperationalError(PSEventId id, PSOpcode opcode, PSTask task, PSKeyword keyword, params object[] args) 
         { 
+            System.Diagnostics.Debug.Write(String.Format("LogOperationalError:{0} Keyword:{1}", id, keyword));
         }
         static internal void LogOperationalError(PSEventId id, PSOpcode opcode, PSTask task, LogContext logContext, string payLoad) 
         { 
+            System.Diagnostics.Debug.Write(String.Format("LogOperationalError:{0} Payload:{1}", id, payLoad));
         }
         static internal void LogAnalyticInformational(PSEventId id, PSOpcode opcode, PSTask task, PSKeyword keyword, params object[] args) 
         { 
+            System.Diagnostics.Debug.Write(String.Format("LogAnalyticInformational:{0} Keyword:{1}", id, keyword));
         }
         static internal void LogOperationalInformation(PSEventId id, PSOpcode opcode, PSTask task, PSKeyword keyword, params object[] args) 
         { 
+            System.Diagnostics.Debug.Write(String.Format("LogAnalyticInformation:{0} Keyword:{1}", id, keyword));
         }
     }
 
@@ -1669,7 +1681,8 @@ namespace System.Management.Automation.Tracing
 
         public bool WriteMessage(String message)
         {
-            return false;
+            System.Diagnostics.Debug.Write(String.Format("Trace:{0}",message));
+            return true;
         }
 
         /// <summary>
@@ -1680,7 +1693,8 @@ namespace System.Management.Automation.Tracing
         /// <returns></returns>
         public bool WriteMessage(string message1, string message2)
         {
-            return false;
+            System.Diagnostics.Debug.Write(String.Format("Trace:{0},{1}",message1,message2));
+            return true;
         }
 
         /// <summary>
@@ -1691,7 +1705,8 @@ namespace System.Management.Automation.Tracing
         /// <returns></returns>
         public bool WriteMessage(string message, Guid instanceId)
         {
-            return false;
+            System.Diagnostics.Debug.Write(String.Format("Trace:{0},{1}",instanceId,message));
+            return true;
         }
 
 
@@ -1706,6 +1721,7 @@ namespace System.Management.Automation.Tracing
         /// <returns></returns>
         public void WriteMessage(string className, string methodName, Guid workflowId, string message, params string[] parameters)
         {
+            System.Diagnostics.Debug.Write(String.Format("Class:{0};Method:{1};Guid:{2};Message:{3}", className, methodName, workflowId, message));
             return;
         }
 
@@ -1721,12 +1737,14 @@ namespace System.Management.Automation.Tracing
         /// <returns></returns>
         public void WriteMessage(string className, string methodName, Guid workflowId, Job job, string message, params string[] parameters)
         {
+            System.Diagnostics.Debug.Write(String.Format("Class:{0};Method:{1};Guid:{2};Job:{3};Message:{4}", className, methodName, workflowId, job, message));
             return;
         }
 
         public bool TraceException(Exception exception)
         {
-            return false;
+            System.Diagnostics.Debug.Write(String.Format("ExcptionMessage:{0}", exception.Message));
+            return true;
         }
     }
 

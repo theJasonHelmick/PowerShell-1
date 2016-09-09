@@ -196,6 +196,7 @@ namespace System.Management.Automation.Internal
 
         private void Log(string logElement, InvocationInfo invocation, PipelineExecutionStatus pipelineExecutionStatus)
         {
+            System.IO.File.AppendAllText("/tmp/zapped",String.Format("{0} -- {1}\n", DateTime.Now, logElement));
             System.Management.Automation.Host.PSHostUserInterface hostInterface = null;
             if (this.LocalPipeline != null)
             {
