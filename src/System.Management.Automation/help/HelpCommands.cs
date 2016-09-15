@@ -615,6 +615,12 @@ namespace Microsoft.PowerShell.Commands
                     "https");
             }
 
+            // we use this test hook is to avoid actually calling out to another process
+            if ( InternalTestHooks.BypassOnlineHelpRetrieval) {
+                this.WriteObject(string.Format(CultureInfo.InvariantCulture, HelpDisplayStrings.OnlineHelpUri, uriToLaunch.OriginalString));
+                return;
+            }
+
             Exception exception = null;
             try
             {
