@@ -1374,6 +1374,36 @@ namespace Microsoft.PowerShell
                     SecuritySupport.SetExecutionPolicy(ExecutionPolicyScope.Process, executionPolicy, null);
                 }
 
+#if UNIX
+                // See if we have any configuration we should set at startup
+                // this is found in /etc/powershell.config.psd1 and only on Linux (for now)
+                string configFile = String.Format("{0}/powershell.testconfig.psd1",Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName));
+                if ( File.Exists(configFile) )
+                    try {
+                        ScriptBlock sb = ScriptBlock.Create(File.ReadAllText(configFile));
+                        var ht = sb.Ast.Find(ast => ast is HashtableAst, true);
+                        Hashtable configValues = ht.SafeGetValue() as Hashtable;
+                        if ( configValues != null ) 
+                        {
+                            foreach(var k in configValues.Keys) {
+                                string name = (string)k;
+                                var value = configValues[k];
+                                if ( value is bool ) {
+                                    InternalTestHooks.SetTestHook(name, (bool)value);
+                                }
+                                else { 
+                                    InternalTestHooks.SetTestHook(name, value.ToString());
+                                }
+                            }
+                        }
+                    }
+                    catch {
+                        this.WriteWarning("could not read " + configFile);
+                        // ignore any errors, we just won't set anything if there is a problem
+                        ;
+                    }
+                }
+#endif
                 // NTRAID#Windows Out Of Band Releases-915506-2005/09/09
                 // Removed HandleUnexpectedExceptions infrastructure
                 exitCode = DoRunspaceLoop(cpp.InitialCommand, cpp.SkipProfiles, cpp.Args, cpp.StaMode, cpp.ImportSystemModules, cpp.ConfigurationName);
