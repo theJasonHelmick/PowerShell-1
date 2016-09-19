@@ -197,10 +197,23 @@ namespace System.Management.Automation.Internal
 
         private void Log(string logElement, InvocationInfo invocation, PipelineExecutionStatus pipelineExecutionStatus)
         {
+            // Create log file for test purposes
             if ( InternalTestHooks.LogPipelineCommandToFile && InternalTestHooks.PipelineLogFile != String.Empty ) 
             {
-                System.IO.File.AppendAllText(InternalTestHooks.PipelineLogFile,String.Format("{0} -- {1}\n", DateTime.Now, GetCommand(invocation)));
+                string command;
+                command = GetCommand(invocation);
+                if ( command == String.Empty )
+                {
+                    if ( this.LocalPipeline != null ) {
+                        if ( this.LocalPipeline.Commands != null ) {
+                            command = this.LocalPipeline.Commands[0].ToString() ;
+                            
+                        }
+                    }
+                }
+                System.IO.File.AppendAllText(InternalTestHooks.PipelineLogFile,String.Format("{0} -- {1}\n", DateTime.Now, command));
             }
+
             System.Management.Automation.Host.PSHostUserInterface hostInterface = null;
             if (this.LocalPipeline != null)
             {
