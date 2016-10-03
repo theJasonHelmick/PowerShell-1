@@ -1374,9 +1374,9 @@ namespace Microsoft.PowerShell
                     SecuritySupport.SetExecutionPolicy(ExecutionPolicyScope.Process, executionPolicy, null);
                 }
 
-#if UNIX
+
                 // See if we have any configuration we should set at startup
-                // this is found in /etc/powershell.config.psd1 and only on Linux (for now)
+                // this is found in powershell.config.psd1 in the same directory as the executable
                 string configFile = String.Format("{0}/powershell.testconfig.psd1",Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName));
                 if ( File.Exists(configFile) )
                 {
@@ -1401,10 +1401,9 @@ namespace Microsoft.PowerShell
                     catch {
                         // ignore any errors, we just won't set anything if there is a problem
                         ui.WriteErrorLine("Could not read " + configFile);
-                        ;
                     }
                 }
-#endif
+
                 // NTRAID#Windows Out Of Band Releases-915506-2005/09/09
                 // Removed HandleUnexpectedExceptions infrastructure
                 exitCode = DoRunspaceLoop(cpp.InitialCommand, cpp.SkipProfiles, cpp.Args, cpp.StaMode, cpp.ImportSystemModules, cpp.ConfigurationName);
