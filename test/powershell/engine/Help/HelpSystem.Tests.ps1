@@ -11,7 +11,7 @@ function UpdateHelpFromLocalContentPath
     {
         if ($Tag -eq 'CI')
         {
-            $helpContentPath = Join-Path $PSScriptRoot "HelpContent"
+            $helpContentPath = Join-Path $PSScriptRoot "assets"
             $helpFiles = @(Get-ChildItem "$helpContentPath\*" -ea SilentlyContinue)
 
             if ($helpFiles.Count -eq 0)
