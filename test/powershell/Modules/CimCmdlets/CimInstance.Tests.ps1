@@ -22,7 +22,18 @@ Try {
                 $pLowerValue | should be $pUpperValue
             }
         }
-        
+        It "GetCimSessionInstanceId method invocation should return data" {
+           $instance.GetCimSessionInstanceId() | Should BeOfType "Guid"
+        }
+        It "should produce an error for a non-existing classname" {
+            try {
+                get-ciminstance -classname thisnameshouldnotexist -ea stop
+                throw "expected error did not occur"
+            }
+            catch {
+                $_.FullyQualifiedErrorId | should be "HRESULT 0x80041010,Microsoft.Management.Infrastructure.CimCmdlets.GetCimInstanceCommand"
+            }
+        }        
     }
 }
 finally {
