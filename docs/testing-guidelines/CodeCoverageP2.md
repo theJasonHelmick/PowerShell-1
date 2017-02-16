@@ -8,16 +8,16 @@ For this post, we’re going to focus on the `Clear-Content` Cmdlet because cove
 
 Here’s a partial capture from running the OpenCover tools:
 
-![Coverage 2a](Images/coverage-2a.jpg)
+![Coverage 2a](Images/Coverage-2a.jpg)
 
 By selecting the class `Microsoft.PowerShell.Commands.ClearContentCommand` we can drill into the specifics about that class which implements the `Clear-Content` cmdlet. 
 We can see that we have about 47% line coverage for this class which isn’t fantastic, by inspecting the red-highlights we can see what’s missing.
 
-![Coverage 2b](Images/coverage-2b.jpg)
+![Coverage 2b](Images/Coverage-2b.jpg)
 
-![Coverage 2c](Images/coverage-2c.jpg)
+![Coverage 2c](Images/Coverage-2c.jpg)
 
-![Coverage 2d](Images/coverage-2d.jpg)
+![Coverage 2d](Images/Coverage-2d.jpg)
 
 It looks like there are some error conditions, and some code which represents whether the underlying provider supports should process are not being tested. 
 We can create tests for these missing areas fairly easily, but I need to know where these new tests should go.
@@ -46,11 +46,11 @@ If you want more information about how we segment our tests, you can review [htt
 Based on the missing code coverage, I replaced `Clear-Content.Tests.ps1` which you can see in this PR: [https://github.com/PowerShell/PowerShell/pull/3157](https://github.com/PowerShell/PowerShell/pull/3157). 
 After rerunning the code coverage tools, I can see that I’ve improved coverage for this cmdlet.
 
-![Coverage 2e](Images/coverage-2e.jpg)
+![Coverage 2e](Images/Coverage-2e.jpg)
 
 There seems to be a small issue with `OpenCover` as some close braces are not being marked as missed, but you can see the improvement:
 
-![Coverage 2f](Images/coverage-2f.jpg)
+![Coverage 2f](Images/Coverage-2f.jpg)
 
 Now it’s your turn and we could really use your help. 
 If you have areas of the product that you rely on, and don’t have the tests that you think they should have, please consider adding tests!
