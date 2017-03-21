@@ -62,7 +62,7 @@ namespace Microsoft.PowerShell
             properties.Add("GitCommitID", PSVersionInfo.GitCommitId);
             string OSVersion;
             try {
-                OSVersion = Environment.OSVersion.ToString();
+                OSVersion = System.Management.Automation.Environment.OSVersion.VersionString;
             }
             catch {
                 OSVersion = "unknown";
