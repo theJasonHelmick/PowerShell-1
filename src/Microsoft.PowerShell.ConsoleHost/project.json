@@ -38,7 +38,8 @@
     },
 
     "dependencies": {
-        "System.Management.Automation": "6.0.0-*"
+        "System.Management.Automation": "6.0.0-*",
+        "Microsoft.ApplicationInsights": "2.2.0"
     },
 
     "frameworks": {

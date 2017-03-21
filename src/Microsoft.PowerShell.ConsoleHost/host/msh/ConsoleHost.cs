@@ -264,6 +264,11 @@ namespace Microsoft.PowerShell
                         s_theConsoleHost.UI.WriteWarningLine(preStartWarning);
                     }
 
+
+                    // Send startup telemetry
+                    // probably want to move this to TelemetryAPI
+                    ApplicationInsightsTelemetry.SendPSCoreStartupTelemetry();
+
                     ClrFacade.StartProfileOptimization(
                         s_theConsoleHost.LoadPSReadline()
                             ? "StartupProfileData-Interactive"
