@@ -264,10 +264,13 @@ namespace Microsoft.PowerShell
                         s_theConsoleHost.UI.WriteWarningLine(preStartWarning);
                     }
 
-
-                    // Send startup telemetry
-                    // probably want to move this to TelemetryAPI
+#if CORECLR
+                    // Send startup telemetry to ApplicationInsights
+                    // We're not modifying the current telemetryAPI code
+                    // Eventually we need to untangle the ETW tracing that we
+                    // do for x-plat needs
                     ApplicationInsightsTelemetry.SendPSCoreStartupTelemetry();
+#endif
 
                     ClrFacade.StartProfileOptimization(
                         s_theConsoleHost.LoadPSReadline()

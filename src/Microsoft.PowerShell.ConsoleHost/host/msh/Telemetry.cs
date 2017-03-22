@@ -1,3 +1,4 @@
+#if CORECLR
 using System;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
@@ -7,6 +8,7 @@ using System.Security.Cryptography;
 using System.Collections.Generic;
 using System.Reflection;
 using System.IO;
+using Environment = System.Management.Automation.Environment;
 
 namespace Microsoft.PowerShell
 {
@@ -62,7 +64,7 @@ namespace Microsoft.PowerShell
             properties.Add("GitCommitID", PSVersionInfo.GitCommitId);
             string OSVersion;
             try {
-                OSVersion = System.Management.Automation.Environment.OSVersion.VersionString;
+                OSVersion = Environment.OSVersion.VersionString;
             }
             catch {
                 OSVersion = "unknown";
@@ -73,3 +75,4 @@ namespace Microsoft.PowerShell
         }
     }
 }
+#endif
