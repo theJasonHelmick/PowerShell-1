@@ -28,7 +28,7 @@ namespace Microsoft.PowerShell
         {
             string hash;
             try {
-                var csp = SHA1.Create();
+                var csp = SHA256.Create();
                 string path = typeof(PSObject).GetTypeInfo().Assembly.Location;
                 // Assembly.GetEntryAssembly().Location;
                 byte[] smaBytes = File.ReadAllBytes(path);
