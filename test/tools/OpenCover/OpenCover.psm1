@@ -47,8 +47,9 @@ function Get-CodeCoverageChange($r1, $r2, [string[]]$ClassName)
 
     if ( $ClassName ) {
         foreach ( $Class in $ClassName ) {
-            $c1 = $r1.Assembly.ClassCoverage | ?{$_.ClassName -eq $Class }
-            $c2 = $r2.Assembly.ClassCoverage | ?{$_.ClassName -eq $Class }
+            # select the largest sequence value
+            $c1 = $r1.Assembly.ClassCoverage | ?{$_.ClassName -eq $Class } | sort-object Sequence | select-object -last 1
+            $c2 = $r2.Assembly.ClassCoverage | ?{$_.ClassName -eq $Class } | sort-object Sequence | select-object -last 1
             $ClassCoverageChange = [pscustomobject]@{
                 ClassName     = $Class
                 Branch        = $c2.Branch
@@ -62,8 +63,9 @@ function Get-CodeCoverageChange($r1, $r2, [string[]]$ClassName)
         return
     }
     
-    $r1.assembly | ForEach-Object { $h[$_.assemblyname] = @($_) }
-    $r2.assembly | ForEach-Object {
+    # reduce the output to the largest sequence value
+    $r1.assembly |sort-object AssemblyName,Sequence|sort-object -uniq AssemblyName| ForEach-Object { $h[$_.assemblyname] = @($_) }
+    $r2.assembly |sort-object AssemblyName,Sequence|sort-object -uniq AssemblyName| ForEach-Object {
                         if($h.ContainsKey($_.assemblyname))
                         {
                             $h[$_.assemblyname] += $_
@@ -335,10 +337,10 @@ function Compare-CodeCoverage
 
     if ( $PSCmdlet.ParameterSetName -eq "file" )
     {
-        [string]$xmlPath1 = (get-item $Run1File).Fullname
+        [string]$xmlPath1 = (get-item $RunFile1).Fullname
         $Run1 = (Get-CoverageData -xmlPath $xmlPath1)
 
-        [string]$xmlPath2 = (get-item $Run1File).Fullname
+        [string]$xmlPath2 = (get-item $RunFile2).Fullname
         $Run2 = (Get-CoverageData -xmlPath $xmlPath2)
     }
 
@@ -416,7 +418,7 @@ function Install-OpenCover
 .Description
    Invoke-OpenCover runs tests under OpenCover by executing tests on PowerShell.exe located at $PowerShellExeDirectory.
 .EXAMPLE
-   Invoke-OpenCover -TestDirectory $pwd/test/powershell -PowerShellExeDirectory $pwd/src/powershell-win-core/bin/CodeCoverage/netcoreapp1.0/win10-x64
+   Invoke-OpenCover -TestDirectory $pwd/test/powershell -PowerShellExeDirectory $pwd/src/powershell-win-core/bin/CodeCoverage/netcoreapp1.1/win10-x64
 #>
 function Invoke-OpenCover
 {
@@ -425,7 +427,7 @@ function Invoke-OpenCover
         [parameter()]$OutputLog = "$home/Documents/OpenCover.xml",
         [parameter()]$TestDirectory = "$($script:psRepoPath)/test/powershell",
         [parameter()]$OpenCoverPath = "$home/OpenCover",
-        [parameter()]$PowerShellExeDirectory = "$($script:psRepoPath)/src/powershell-win-core/bin/CodeCoverage/netcoreapp1.0/win10-x64/publish",
+        [parameter()]$PowerShellExeDirectory = "$($script:psRepoPath)/src/powershell-win-core/bin/CodeCoverage/netcoreapp1.1/win10-x64/publish",
         [parameter()]$PesterLogElevated = "$pwd/TestResultsElevated.xml",
         [parameter()]$PesterLogUnelevated = "$pwd/TestResultsUnelevated.xml",
         [parameter()]$PesterLogFormat = "NUnitXml",
