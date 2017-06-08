@@ -1371,7 +1371,8 @@ namespace System.Management.Automation
         internal static Encoding GetEncodingFromEnum(FileSystemCmdletProviderEncoding encoding)
         {
             // Default to unicode encoding
-            Encoding result = Encoding.Unicode;
+            // Encoding result = Encoding.Unicode;
+            Encoding result = new UTF8Encoding(false);
 
             switch (encoding)
             {
@@ -1387,8 +1388,13 @@ namespace System.Management.Automation
                     result = Encoding.BigEndianUnicode;
                     break;
 
+                case FileSystemCmdletProviderEncoding.UTF8BOM:
+                    result = Encoding.UTF8; // The default UTF8 encoder includes the BOM
+                    break;
+
                 case FileSystemCmdletProviderEncoding.UTF8:
-                    result = Encoding.UTF8;
+                case FileSystemCmdletProviderEncoding.UTF8NoBOM:
+                    result = new UTF8Encoding(false);
                     break;
 
                 case FileSystemCmdletProviderEncoding.UTF7:

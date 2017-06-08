@@ -37,7 +37,7 @@ namespace Microsoft.PowerShell.Commands
             StreamWriter streamWriter;
             FileStream fileStream;
             FileInfo fileInfo;
-            PathUtils.MasterStreamOpen(cmdlet, filepath, "ascii", true, false, force, noclobber,
+            PathUtils.MasterStreamOpen(cmdlet, filepath, FileSystemCmdletProviderEncoding.Ascii, true, false, force, noclobber,
                 out fileStream, out streamWriter, out fileInfo, isLiteralPath);
 
             try

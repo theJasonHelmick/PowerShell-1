@@ -7,6 +7,8 @@ using System.Management.Automation;
 using System.Management.Automation.Internal;
 using System.Management.Automation.Host;
 using System.IO;
+using System.Text;
+using Microsoft.PowerShell.Commands;
 using Microsoft.PowerShell.Commands.Internal.Format;
 
 namespace Microsoft.PowerShell.Commands
@@ -72,25 +74,13 @@ namespace Microsoft.PowerShell.Commands
         /// </summary>
         ///
         [Parameter(Position = 1)]
-        [ValidateNotNullOrEmpty]
-        [ValidateSetAttribute(new string[] {
-            EncodingConversion.Unknown,
-            EncodingConversion.String,
-            EncodingConversion.Unicode,
-            EncodingConversion.BigEndianUnicode,
-            EncodingConversion.Utf8,
-            EncodingConversion.Utf7,
-            EncodingConversion.Utf32,
-            EncodingConversion.Ascii,
-            EncodingConversion.Default,
-            EncodingConversion.OEM })]
-        public string Encoding
+        public FileSystemCmdletProviderEncoding Encoding
         {
             get { return _encoding; }
             set { _encoding = value; }
         }
 
-        private string _encoding;
+        private FileSystemCmdletProviderEncoding _encoding;
 
         /// <summary>
         /// Property that sets append parameter.
@@ -193,10 +183,11 @@ namespace Microsoft.PowerShell.Commands
             string action = StringUtil.Format(FormatAndOut_out_xxx.OutFile_Action);
             if (ShouldProcess(FilePath, action))
             {
+                Encoding resolvedEncoding = Utils.GetEncodingFromEnum(_encoding);
                 PathUtils.MasterStreamOpen(
                     this,
                     FilePath,
-                    _encoding,
+                    resolvedEncoding,
                     false, // defaultEncoding
                     Append,
                     Force,

@@ -7421,9 +7421,19 @@ namespace Microsoft.PowerShell.Commands
         BigEndianUnicode,
 
         /// <summary>
-        /// UTF8 encoding.
+        /// Backward compatibility - UTF8 encoding without BOM
         /// </summary>
         UTF8,
+
+        /// <summary>
+        /// UTF8 encoding which includes BOM.
+        /// </summary>
+        UTF8BOM,
+
+        /// <summary>
+        /// UTF8 encoding without BOM.
+        /// </summary>
+        UTF8NoBOM,
 
         /// <summary>
         /// UTF7 encoding.
