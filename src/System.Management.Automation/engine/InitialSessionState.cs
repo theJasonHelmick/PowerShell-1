@@ -6020,6 +6020,7 @@ if($paths) {
                 // Not exported, but are added via reflection so added here as well, though maybe they shouldn't be
                 {"Out-LineOutput",                    new SessionStateCmdletEntry("Out-LineOutput", typeof(OutLineOutputCommand), helpFile) },
                 {"Format-Default",                    new SessionStateCmdletEntry("Format-Default", typeof(FormatDefaultCommand), helpFile) },
+                {"Get-FEncoding",                     new SessionStateCmdletEntry("Get-Fencoding", typeof(Microsoft.PowerShell.getfencodingcommand), helpFile) },
             };
             foreach (var val in cmdlets.Values)
             {
