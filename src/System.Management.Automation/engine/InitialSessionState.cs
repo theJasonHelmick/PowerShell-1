@@ -4824,7 +4824,7 @@ end
         internal const ActionPreference defaultVerbosePreference = ActionPreference.SilentlyContinue;
         internal const ActionPreference defaultWarningPreference = ActionPreference.Continue;
         internal const ActionPreference defaultInformationPreference = ActionPreference.SilentlyContinue;
-        internal const FileSystemCmdletProviderEncoding defaultFileEncodingPreference = FileSystemCmdletProviderEncoding.Unknown;
+        internal const Microsoft.PowerShell.FileEncoding defaultFileEncodingPreference = Microsoft.PowerShell.FileEncoding.Unknown;
         internal const bool defaultWhatIfPreference = false;
         internal const ConfirmImpact defaultConfirmPreference = ConfirmImpact.High;
 
@@ -4910,7 +4910,7 @@ end
                 defaultFileEncodingPreference,
                 RunspaceInit.DefaultFileEncodingDescription,
                 ScopedItemOptions.None,
-                new ArgumentTypeConverterAttribute(typeof(FileSystemCmdletProviderEncoding))
+                new ArgumentTypeConverterAttribute(typeof(Microsoft.PowerShell.FileEncoding))
                  ),
             new SessionStateVariableEntry(
                 SpecialVariables.ErrorView,
