@@ -103,7 +103,7 @@ namespace Microsoft.PowerShell
         /// </summary>
         public static Encoding GetEncoding(FileEncoding TextEncoding)
         {
-            System.Text.Encoding result = Encoding.Unicode;
+            System.Text.Encoding result = ClrFacade.GetDefaultEncoding();;
             switch ( TextEncoding ) 
             {
                 case FileEncoding.String:
@@ -120,6 +120,10 @@ namespace Microsoft.PowerShell
 
                 case FileEncoding.UTF8BOM:
                     result = Encoding.UTF8; // The default UTF8 encoder includes the BOM
+                    break;
+
+                case FileEncoding.Byte:
+                    result = Encoding.Unicode;
                     break;
 
                 case FileEncoding.UTF8:
@@ -179,9 +183,11 @@ namespace Microsoft.PowerShell
 
         internal static Encoding GetWindowsLegacyCmdletEncoding(Cmdlet c)
         {
-            string key = c.GetType().FullName.ToLower(CultureInfo.InvariantCulture);
-            if ( legacyEncodingMap.ContainsKey(key)){
-                return legacyEncodingMap[key];
+            if ( c != null ) {
+                string key = c.GetType().FullName.ToLower(CultureInfo.InvariantCulture);
+                if ( legacyEncodingMap.ContainsKey(key)){
+                    return legacyEncodingMap[key];
+                }
             }
             return Encoding.Default;
         }
@@ -197,24 +203,12 @@ namespace Microsoft.PowerShell
             FileEncoding encodingPreference = FileEncoding.Unknown;
             bool preferenceSetAndValid = false;
 
-            // This is a bit dodgy. It is possible to explicitly set the encoding parameter to unknown.
-            // We will treat that the same as if it were not explicitly set
-            bool encodingProvided = encoding != FileEncoding.Unknown; 
 
-            // Check the preference variable
-            try {
-                encodingPreference = (FileEncoding)cmdlet.Context.SessionState.PSVariable.GetValue("PSDefaultFileEncoding");
-                preferenceSetAndValid = encodingPreference != FileEncoding.Unknown; // If set to unknown, we accept that it is unset
-            }
-            catch {
-                ; // if failure, the preference is not set or is not valid
-            }
-
-            bool windowsLegacyDesired = encoding == FileEncoding.WindowsLegacy;
-
-            if ( encodingProvided )
+            // An encoding has been specified as a parameter (or the explicit parameter value is "Unknown")
+            if ( encoding != FileEncoding.Unknown )
             {
-                if ( windowsLegacyDesired ) 
+                // If the encoding has been set to WindowsLegacy, we need to look up the actual encoding
+                if ( encoding == FileEncoding.WindowsLegacy )
                 {
                     resolvedEncoding = GetWindowsLegacyCmdletEncoding(cmdlet);
                 }
@@ -223,16 +217,25 @@ namespace Microsoft.PowerShell
                     resolvedEncoding = GetEncoding(encoding);
                 }
             }
-            else if ( preferenceSetAndValid )
+            else
             {
-                if ( windowsLegacyDesired ) 
+                // the parameter is not specifically set
+                // Check the preference variable
+                object tmp = cmdlet.Context.SessionState.PSVariable.GetValue("PSDefaultFileEncoding");
+                // It doesn't matter if this fails
+                LanguagePrimitives.TryConvertTo<FileEncoding>(tmp, out encodingPreference);
+                preferenceSetAndValid = encodingPreference != FileEncoding.Unknown; // If set to unknown, we accept that it is unset
+                // If the encoding preference has been set to WindowsLegacy, we need to look up the actual encoding
+                if ( encodingPreference == FileEncoding.WindowsLegacy ) 
                 {
                     resolvedEncoding = GetWindowsLegacyCmdletEncoding(cmdlet);
                 }
-                else
+                else if ( encodingPreference != FileEncoding.Unknown )
                 {
                     resolvedEncoding = GetEncoding(encodingPreference);
                 }
+                // the final else would be set the encoding to ClrFacade.GetDefaultEncoding()
+                // which was handled above
             }
 
             return resolvedEncoding; // GetEncoding(FileEncoding.UTF8NoBOM);
