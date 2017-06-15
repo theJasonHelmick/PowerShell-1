@@ -4824,6 +4824,7 @@ end
         internal const ActionPreference defaultVerbosePreference = ActionPreference.SilentlyContinue;
         internal const ActionPreference defaultWarningPreference = ActionPreference.Continue;
         internal const ActionPreference defaultInformationPreference = ActionPreference.SilentlyContinue;
+        internal const FileSystemCmdletProviderEncoding defaultFileEncodingPreference = FileSystemCmdletProviderEncoding.Unknown;
         internal const bool defaultWhatIfPreference = false;
         internal const ConfirmImpact defaultConfirmPreference = ConfirmImpact.High;
 
@@ -4903,6 +4904,13 @@ end
                 RunspaceInit.InformationPreferenceDescription,
                 ScopedItemOptions.None,
                 new ArgumentTypeConverterAttribute(typeof(ActionPreference))
+                 ),
+            new SessionStateVariableEntry(
+                SpecialVariables.DefaultFileEncodingPreference,
+                defaultFileEncodingPreference,
+                RunspaceInit.DefaultFileEncodingDescription,
+                ScopedItemOptions.None,
+                new ArgumentTypeConverterAttribute(typeof(FileSystemCmdletProviderEncoding))
                  ),
             new SessionStateVariableEntry(
                 SpecialVariables.ErrorView,
