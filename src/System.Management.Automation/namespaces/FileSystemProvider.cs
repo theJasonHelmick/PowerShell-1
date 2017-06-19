@@ -23,6 +23,7 @@ using Microsoft.Win32.SafeHandles;
 using Dbg = System.Management.Automation;
 using System.Runtime.InteropServices;
 using System.Management.Automation.Runspaces;
+using Microsoft.PowerShell;
 
 #if CORECLR
 // Use stubs for SecurityZone
@@ -7553,7 +7554,8 @@ namespace Microsoft.PowerShell.Commands
         /// reading data from the file.
         /// </summary>
         [Parameter]
-        public FileSystemCmdletProviderEncoding Encoding { get; set; } = FileSystemCmdletProviderEncoding.String;
+        // public FileSystemCmdletProviderEncoding Encoding { get; set; } = FileSystemCmdletProviderEncoding.String;
+        public FileEncoding Encoding { get; set; } = FileEncoding.Unknown;
 
         /// <summary>
         /// A parameter to return a stream of an item.
@@ -7569,7 +7571,9 @@ namespace Microsoft.PowerShell.Commands
         {
             get
             {
-                return Utils.GetEncodingFromEnum(Encoding);
+                // return Utils.GetEncodingFromEnum(Encoding);
+                // return PowerShellEncoding.GetEncoding(Encoding);
+                return PowerShellEncoding.GetProviderEncoding(Encoding);
             }
         } // EncodingType
 
@@ -7581,7 +7585,7 @@ namespace Microsoft.PowerShell.Commands
         {
             get
             {
-                return Encoding == FileSystemCmdletProviderEncoding.Byte;
+                return Encoding == FileEncoding.Byte;
             } // get
         } // UsingByteEncoding
 
@@ -7593,7 +7597,7 @@ namespace Microsoft.PowerShell.Commands
         {
             get
             {
-                return (Encoding != FileSystemCmdletProviderEncoding.String);
+                return (Encoding != FileEncoding.String);
             } // get
         } // WasStreamTypeSpecified
 

@@ -193,6 +193,20 @@ namespace Microsoft.PowerShell
         }
 
         /// <summary>
+        /// Retrieve the encoding in a provider context
+        /// 
+        /// </summary>
+        public static Encoding GetProviderEncoding(FileEncoding encoding)
+        {
+            Encoding resolvedEncoding = ClrFacade.GetDefaultEncoding();
+            if ( encoding != FileEncoding.Unknown )
+            {
+                resolvedEncoding = GetEncoding(encoding);
+            }
+            return resolvedEncoding;
+        }
+
+        /// <summary>
         /// Retrieve the encoding based on the Cmdlet and the Encoding 
         /// <param name="cmdlet">The cmdlet of interest</param>
         /// <param name="encoding">The Encoding parameter value</param>
