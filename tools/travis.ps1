@@ -80,7 +80,7 @@ function Set-DailyBuildBadge
 
     $headers["Authorization"]  = "SharedKey " + $storageAccountName + ":" + $signature
 
-    if ( $PSCmdlet.ShouldProcess("$signaturestring")) 
+    if ( $PSCmdlet.ShouldProcess("$signaturestring"))
     {
         # if this fails, it will throw, you can't check the response for a success code
         $response = Invoke-RestMethod -Uri $Url -Method $method -headers $headers -Body $body -ContentType "image/svg+xml"
@@ -123,10 +123,18 @@ if ($isFullBuild) {
     $pesterParam['ThrowOnFailure'] = $true
 }
 
-# Remove telemetry semaphore file in CI
-$telemetrySemaphoreFilepath = Join-Path $output DELETE_ME_TO_DISABLE_CONSOLEHOST_TELEMETRY
-if ( Test-Path "${telemetrySemaphoreFilepath}" ) {
-    Remove-Item -force ${telemetrySemaphoreFilepath}
+# Don't send telemetry in CI
+$powershellConfig = Join-Path $env:CoreOutput PowerShellProperties.json
+# if the file doesn't exist, we won't send telemetry,
+# if the file exists and SendTelemetry is false we won't send telemetry
+# if the file exists and SendTelemetry is true, set it to false so we won't send telemetry
+if ( Test-Path "${powershellConfig}" ) {
+    $settings = Get-Content $powershellConfig | ConvertFrom-Json
+    if ( $settings.PSObject.Properties['SendTelemetry'] -and $Settings.SendTelemetry )
+    {
+        $settings.SendTelemetry = $false
+        $settings | ConvertTo-Json -Compress | out-file -encoding ASCII $powershellConfig
+    }
 }
 
 Start-PSPester @pesterParam

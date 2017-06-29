@@ -311,10 +311,18 @@ function Invoke-AppVeyorTest
         Write-Host -Foreground Green 'Running all CoreCLR tests..'
     }
 
-    # Remove telemetry semaphore file in CI
-    $telemetrySemaphoreFilepath = Join-Path $env:CoreOutput DELETE_ME_TO_DISABLE_CONSOLEHOST_TELEMETRY
-    if ( Test-Path "${telemetrySemaphoreFilepath}" ) {
-        Remove-Item -Force ${telemetrySemaphoreFilepath}
+    # Don't send telemetry in CI
+    $powershellConfig = Join-Path $env:CoreOutput PowerShellProperties.json
+    # if the file doesn't exist, we won't send telemetry,
+    # if the file exists and SendTelemetry is false we won't send telemetry
+    # if the file exists and SendTelemetry is true, set it to false so we won't send telemetry
+    if ( Test-Path "${powershellConfig}" ) {
+        $settings = Get-Content $powershellConfig | ConvertFrom-Json
+        if ( $settings.PSObject.Properties['SendTelemetry'] -and $Settings.SendTelemetry )
+        {
+            $settings.SendTelemetry = $false
+            $settings | ConvertTo-Json -Compress | out-file -encoding ASCII $powershellConfig
+        }
     }
 
     Start-PSPester -bindir $env:CoreOutput -outputFile $testResultsNonAdminFile -Unelevate -Tag @() -ExcludeTag ($ExcludeTag + @('RequireAdminOnWindows'))

@@ -108,6 +108,15 @@ namespace System.Management.Automation
         internal abstract string GetDefaultSourcePath();
         internal abstract void SetDefaultSourcePath(string defaultPath);
 
+        /// <summary>
+        /// Send telemetry
+        /// Proposed value = true
+        /// </summary>
+        /// <returns>true</returns>
+        internal abstract bool GetSendTelemetry();
+        internal abstract void SetSendTelemetry(bool send);
+
+
         #endregion // Interface Methods
     }
 
@@ -316,6 +325,32 @@ namespace System.Management.Automation
             string fileName = Path.Combine(psHomeConfigDirectory, configFileName);
 
             WriteValueToFile<string>(fileName, "DefaultSourcePath", defaultPath);
+        }
+
+        /// <summary>
+        /// Determine whether telemetry should be sent
+        ///
+        /// Schema:
+        /// {
+        ///     "SendTelemetry" : bool
+        /// }
+        /// </summary>
+        /// <returns>bool</returns>
+        internal override bool GetSendTelemetry()
+        {
+            string fileName = Path.Combine(psHomeConfigDirectory, configFileName);
+            return ReadValueFromFile<bool>(fileName, "SendTelemetry");
+        }
+
+        /// <summary>
+        /// Setting telemetry is not possible on Nano or IoT
+        /// This is a no-op
+        /// </summary>
+        /// <param name="send"></param>
+        internal override void SetSendTelemetry(bool send)
+        {
+            string fileName = Path.Combine(psHomeConfigDirectory, configFileName);
+            WriteValueToFile<bool>(fileName, "SendTelemetry", send);
         }
 
         private T ReadValueFromFile<T>(string fileName, string key)
@@ -681,6 +716,25 @@ namespace System.Management.Automation
         }
 
         /// <summary>
+        /// Telemetry is not to be sent from Nano or IoT so we will return false
+        /// </summary>
+        /// <returns>bool</returns>
+        internal override bool GetSendTelemetry()
+        {
+            return false;
+        }
+
+        /// <summary>
+        /// Sending telemetry is not done on Nano or IoT
+        /// This is a no-op
+        /// </summary>
+        /// <param name="send"></param>
+        internal override void SetSendTelemetry(bool send)
+        {
+            return;
+        }
+
+        /// <summary>
         /// Reads a DWORD from the Registry. Exceptions are intentionally allowed to pass through to
         /// the caller because different classes and methods within the code base handle Registry
         /// exceptions differently. Some suppress exceptions and others pass them to the user.
@@ -791,6 +845,7 @@ namespace System.Management.Automation
                 }
             }
         }
+
     }
 } // Namespace System.Management.Automation
 
