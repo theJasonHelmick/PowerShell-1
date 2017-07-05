@@ -476,6 +476,19 @@ cmd.exe /C cd /d "$location" "&" "$($vcPath)\vcvarsall.bat" "$NativeHostArch" "&
         }
         New-Item -Path $refDestFolder -ItemType Directory -Force -ErrorAction Stop > $null
         Copy-Item -Path $refAssemblies -Destination $refDestFolder -Force -ErrorAction Stop
+
+        if ($IsRedHatFamily) {
+            # add two symbolic links to system shared libraries that libmi.so is dependent on to handle
+            # platform specific changes. This is the only set of platforms needed for this currently
+            # as Ubuntu has these specific library files in the platform and OSX builds for itself
+            # against the correct versions.
+            if ( ! (test-path "$publishPath/libssl.so.1.0.0")) {
+                $null = New-Item -Force -ItemType SymbolicLink -Target "/lib64/libssl.so.10" -Path "$publishPath/libssl.so.1.0.0" -ErrorAction Stop
+            }
+            if ( ! (test-path "$publishPath/libcrypto.so.1.0.0")) {
+                $null = New-Item -Force -ItemType SymbolicLink -Target "/lib64/libcrypto.so.10" -Path "$publishPath/libcrypto.so.1.0.0" -ErrorAction Stop
+            }
+        }
     } finally {
         Pop-Location
     }
