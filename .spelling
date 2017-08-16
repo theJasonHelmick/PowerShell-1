@@ -17,6 +17,8 @@ alpha.9
 AlternateStream
 amd64
 analyzing
+api
+apis
 AppImage
 AppVeyor
 argumentlist
@@ -24,6 +26,7 @@ arm32
 artifact
 artifacts
 ASP.NET
+asmmeta
 AssemblyLoadContext
 authenticode
 authenticodesignature

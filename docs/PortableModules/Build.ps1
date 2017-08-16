@@ -15,8 +15,10 @@ if ( $LASTEXITCODE -ne 0 ) {
 
 # build the nuget spec file
 # don't proceed if the assembly is missing
-$PackageName = "System.Management.Automation"
-$source = "obj\Debug\netstandard2.0\${PackageName}.dll"
+# $PackageName = "S ystem.Management.Automation"
+$PackageName = "PowerShell.Standard3"
+$DllName = "System.Management.Automation.dll"
+$source = "obj\Debug\netstandard2.0\${$DllName}"
 if ( ! (Test-Path $source) ) {
     throw "assembly $source not found"
     exit
@@ -25,17 +27,17 @@ if ( ! (Test-Path $source) ) {
 $body = '<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">',
         ' <metadata>',
         "  <id>$PackageName</id>",
-        '  <version>1.0.0</version>',
-        '  <title>Microsoft PowerShell Standard 3 Reference Assemblies</title>',
+        '  <version>3.0.0</version>',
+        '  <title>Microsoft PowerShell Standard</title>',
         '  <authors>Microsoft</authors>',
         '  <owners>Microsoft</owners>',
         '  <projectUrl>https://msdn.microsoft.com/en-us/mt173057.aspx</projectUrl>',
         '  <requireLicenseAcceptance>false</requireLicenseAcceptance>',
-        '  <description>Contains the reference assemblies for PowerShell Standard 3</description>',
+        '  <description>Contains the reference assembly for PowerShell Standard 3</description>',
         '  <copyright>Copyright 2017</copyright>',
-        '  <tags>PowerShell reference assembly</tags>',
+        '  <tags>PowerShell, netstandard2, netstandard2.0</tags>',
         '  <references>',
-        "   <reference file=""${PackageName}.dll"" />",
+        "   <reference file=""${DllName}"" />",
         '  </references>',
         ' </metadata>',
         ' <files>',
@@ -43,8 +45,8 @@ $body = '<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.x
         ' </files>',
         '</package>'
 
-$nuspecFile = "${packageName}.1.0.0.nuspec"
-$nupkgFile = "${packageName}.1.0.0.nupkg"
+$nuspecFile = "${packageName}.3.0.0.nuspec"
+$nupkgFile = "${packageName}.3.0.0.nupkg"
 
 $body |set-content -encoding Ascii $nuspecFile
 if ( ! (test-path "${nuspecFile}")) {
@@ -59,7 +61,8 @@ if ( $LASTEXITCODE -ne 0 ) {
 
 # local target for test
 $nugetTarget = "c:\nuget"
-$nugetInstalledLocation = "${nugetTarget}\system.management.automation"
+$packageNameLower = $packageName.ToLower()
+$nugetInstalledLocation = "${nugetTarget}\${packageNameLower}"
 if ( test-path $nugetInstalledLocation ) {
     remove-item -force -recurse $nugetInstalledLocation
 }

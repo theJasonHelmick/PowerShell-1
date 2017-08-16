@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Management.Automation" Version="1.0.0" />
+    <PackageReference Include="PowerShell.Standard3" Version="3.0.0" />
   </ItemGroup>
 
 </Project>
