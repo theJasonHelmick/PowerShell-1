@@ -11,7 +11,7 @@ namespace PSStandard
         public PSCredential Credential { get; set; }
 
         protected override void EndProcessing() {
-            WriteObject("oh yeah!");
+            WriteObject("Success!");
         }
     }
 }

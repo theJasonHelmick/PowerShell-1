@@ -1,19 +1,29 @@
-param ( [switch]$nugetonly )
-push-location ReferenceAssembly
 
-if ( ! $nugetonly )
-{
-    # build the assembly
-    dotnet restore
-    dotnet publish
+push-location $PsScriptRoot
+
+# build and publish the reference assembly
+push-location ReferenceAssembly
+$result = dotnet restore 2>&1
+if ( $LASTEXITCODE -ne 0 ) {
+    throw "restore FAIL: $result"
 }
 
+$result = dotnet publish 2>&1
+if ( $LASTEXITCODE -ne 0 ) {
+    throw "publish FAIL: $result"
+}
+
+# build the nuget spec file
+# don't proceed if the assembly is missing
 $PackageName = "System.Management.Automation"
+$source = "obj\Debug\netstandard2.0\${PackageName}.dll"
+if ( ! (Test-Path $source) ) {
+    throw "assembly $source not found"
+    exit
+}
 
-$source = "obj\Debug\netstandard2.0\System.Management.Automation.dll"
-
-$head = '<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">'
-$meta = ' <metadata>',
+$body = '<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">',
+        ' <metadata>',
         "  <id>$PackageName</id>",
         '  <version>1.0.0</version>',
         '  <title>Microsoft PowerShell Standard 3 Reference Assemblies</title>',
@@ -25,58 +35,70 @@ $meta = ' <metadata>',
         '  <copyright>Copyright 2017</copyright>',
         '  <tags>PowerShell reference assembly</tags>',
         '  <references>',
-        '   <reference file="System.Management.Automation.dll" />',
+        "   <reference file=""${PackageName}.dll"" />",
         '  </references>',
-        ' </metadata>'
-
-#$dependencies = "  <dependencies>",
-#    $(sls packagereference *csproj | foreach-object { 
-#        $d = $_.line -replace "PackageReference","dependency" 
-#        $d = $d -replace "Include=","id="
-#        $d = $d -creplace "Version=","version=" 
-#        $d
-#        }
-#        ),
-#    '   </dependencies>',
-#        ' </metadata>'
-#
-$files = $source | foreach-object {
-    ' <files>'
-    }{
-    '  <file src="{0}" target="lib\netstandard2.0" />' -f $_
-    }{
-    '  </files>'
-    }
-
-$tail = '</package>'
+        ' </metadata>',
+        ' <files>',
+        "  <file src=""${source}"" target=""lib\netstandard2.0"" />",
+        ' </files>',
+        '</package>'
 
 $nuspecFile = "${packageName}.1.0.0.nuspec"
 $nupkgFile = "${packageName}.1.0.0.nupkg"
 
-.{ 
-$head
-$meta
-# $dependencies
-$files
-$tail
-} |set-content -encoding Ascii $nuspecFile
+$body |set-content -encoding Ascii $nuspecFile
+if ( ! (test-path "${nuspecFile}")) {
+    throw "${nuspecFile} could not be created"
+}
 
-nuget.exe pack $nuspecFile
+# make the package
+$result = nuget.exe pack $nuspecFile 2>&1
+if ( $LASTEXITCODE -ne 0 ) {
+    throw "nuget pack FAIL: $result"
+}
 
-
+# local target for test
 $nugetTarget = "c:\nuget"
 $nugetInstalledLocation = "${nugetTarget}\system.management.automation"
 if ( test-path $nugetInstalledLocation ) {
     remove-item -force -recurse $nugetInstalledLocation
 }
-nuget.exe add $nupkgFile -source c:\NuGet -expand
+$result = nuget.exe add $nupkgFile -source c:\NuGet -expand 2>&1
+if ( $LASTEXITCODE -ne 0 ) {
+    throw "nuget expand FAIL: $result"
+}
 pop-location
 
+# build the demo module assembly
 push-location Test
-dotnet restore
-dotnet build
-push-location "bin\Debug\netstandard2.0"
-$result = & "$PSHOME/powershell" -noprofile -c "import-module ./Demo.Cmdlet.dll;get-thing"
-$result -match "oh yeah!"
+$result = dotnet restore 2>&1
+if ( $LASTEXITCODE -ne 0 ) {
+    throw "restore FAIL: $result"
+}
+
+$result = dotnet publish 2>&1
+if ( $LASTEXITCODE -ne 0 ) {
+    throw "publish FAIL: $result"
+}
+$moduleDll = "${PWD}\bin\Debug\netstandard2.0\Demo.Cmdlet.dll"
+
+if ( ! (Test-Path ${moduleDll})) {
+    throw "Could not find built Demo assembly"
+}
+
+# all done with the building
 pop-location
 pop-location
+
+#### TESTS
+Describe "Test cmdlet assembly" {
+    It "Should work against the current PowerShell 6" {
+        $result = & "$PSHOME/powershell" -noprofile -c "import-module ${moduleDll};get-thing"
+        $result | should match "Success!"
+    }
+    It "Should work against inbox PowerShell" -skip:(!$IsWindows) {
+        $ps5 = "${env:WinDir}\System32\windowspowershell\v1.0\powershell.exe"
+        $result = & "${ps5}" -noprofile -c "import-module ${moduleDll};get-thing"
+        $result | should match "Success!"
+    }
+}
