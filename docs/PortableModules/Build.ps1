@@ -1,4 +1,3 @@
-
 push-location $PsScriptRoot
 
 # build and publish the reference assembly
@@ -16,9 +15,10 @@ if ( $LASTEXITCODE -ne 0 ) {
 # build the nuget spec file
 # don't proceed if the assembly is missing
 # $PackageName = "S ystem.Management.Automation"
-$PackageName = "PowerShell.Standard3"
+$PackageName = "PowerShellStandard.Library"
+$PackageVersion = "3.0.0-preview-01"
 $DllName = "System.Management.Automation.dll"
-$source = "obj\Debug\netstandard2.0\${$DllName}"
+$source = "obj\Debug\netstandard2.0\${DllName}"
 if ( ! (Test-Path $source) ) {
     throw "assembly $source not found"
     exit
@@ -27,8 +27,8 @@ if ( ! (Test-Path $source) ) {
 $body = '<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">',
         ' <metadata>',
         "  <id>$PackageName</id>",
-        '  <version>3.0.0</version>',
-        '  <title>Microsoft PowerShell Standard</title>',
+        "  <version>${PackageVersion}</version>",
+        '  <title>PowerShellStandard.Library</title>',
         '  <authors>Microsoft</authors>',
         '  <owners>Microsoft</owners>',
         '  <projectUrl>https://msdn.microsoft.com/en-us/mt173057.aspx</projectUrl>',
@@ -45,8 +45,8 @@ $body = '<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.x
         ' </files>',
         '</package>'
 
-$nuspecFile = "${packageName}.3.0.0.nuspec"
-$nupkgFile = "${packageName}.3.0.0.nupkg"
+$nuspecFile = "${packageName}.${PackageVersion}.nuspec"
+$nupkgFile = "${packageName}.${PackageVersion}.nupkg"
 
 $body |set-content -encoding Ascii $nuspecFile
 if ( ! (test-path "${nuspecFile}")) {
