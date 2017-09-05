@@ -579,7 +579,7 @@ function Install-OpenCover
 .Description
    Invoke-OpenCover runs tests under OpenCover by executing tests on PowerShell.exe located at $PowerShellExeDirectory.
 .EXAMPLE
-   Invoke-OpenCover -TestPath $pwd/test/powershell -PowerShellExeDirectory $pwd/src/powershell-win-core/bin/CodeCoverage/netcoreapp1.0/win10-x64
+   Invoke-OpenCover -TestPath $pwd/test/powershell -PowerShellExeDirectory $pwd/src/powershell-win-core/bin/CodeCoverage/netcoreapp1.0/win7-x64
 #>
 function Invoke-OpenCover
 {
@@ -588,7 +588,7 @@ function Invoke-OpenCover
         [parameter()]$OutputLog = "$home/Documents/OpenCover.xml",
         [parameter()]$TestPath = "${script:psRepoPath}/test/powershell",
         [parameter()]$OpenCoverPath = "$home/OpenCover",
-        [parameter()]$PowerShellExeDirectory = "${script:psRepoPath}/src/powershell-win-core/bin/CodeCoverage/netcoreapp2.0/win10-x64/publish",
+        [parameter()]$PowerShellExeDirectory = "${script:psRepoPath}/src/powershell-win-core/bin/CodeCoverage/netcoreapp2.0/win7-x64/publish",
         [parameter()]$PesterLogElevated = "$pwd/TestResultsElevated.xml",
         [parameter()]$PesterLogUnelevated = "$pwd/TestResultsUnelevated.xml",
         [parameter()]$PesterLogFormat = "NUnitXml",
