@@ -31,6 +31,7 @@ namespace System.Management.Automation
     /// </remarks>
     internal enum NativeCommandIOFormat
     {
+        Binary,
         Text,
         Xml
     };
@@ -144,6 +145,8 @@ namespace System.Management.Automation
         /// NativeCommandProcessor
         /// </summary>
         private ApplicationInfo _applicationInfo;
+
+        private static Encoding nativePipelineEncoding = Text.Encoding.GetEncoding(28591);
 
         /// <summary>
         /// Initializes the new instance of NativeCommandProcessor class.
@@ -544,7 +547,13 @@ namespace System.Management.Automation
                     //If input is redirected, start input to process.
                     if (startInfo.RedirectStandardInput)
                     {
-                        NativeCommandIOFormat inputFormat = NativeCommandIOFormat.Text;
+                        NativeCommandIOFormat inputFormat;
+                        if ( Platform.IsWindows ) {
+                            inputFormat = NativeCommandIOFormat.Text;
+                        }
+                        else {
+                            inputFormat = NativeCommandIOFormat.Binary;
+                        }
                         if (_isMiniShell)
                         {
                             inputFormat = ((MinishellParameterBinderController)NativeParameterBinderController).InputFormat;
@@ -637,7 +646,7 @@ namespace System.Management.Automation
                         // It's a normal situation: another thread can mark collection as CompleteAdding
                         // in a concurrent way and we will rise an exception in Take().
                         // Although it's a normal situation it's not the most common path
-                        // and will be executed only on the race condtion case.
+                        // and will be executed only on the race condition case.
                     }
                 }
 
@@ -1116,10 +1125,12 @@ namespace System.Management.Automation
                 if (redirectOutput)
                 {
                     startInfo.RedirectStandardOutput = true;
+                    startInfo.StandardOutputEncoding = nativePipelineEncoding;
                 }
                 if (redirectError)
                 {
                     startInfo.RedirectStandardError = true;
+                    //  startInfo.StandardErrorEncoding = nativePipelineEncoding;
                 }
             }
             else
@@ -1453,6 +1464,7 @@ namespace System.Management.Automation
         private int _refCount;
         private BlockingCollection<ProcessOutputObject> _queue;
         private bool _isFirstOutput;
+        private bool _addNewLine;
         private bool _isFirstError;
         private bool _isXmlCliOutput;
         private bool _isXmlCliError;
@@ -1520,7 +1532,35 @@ namespace System.Management.Automation
                 }
                 else
                 {
-                    _queue.Add(new ProcessOutputObject(outputReceived.Data, MinishellStream.Output));
+                    // We put the newline back (which was stripped by BeginOutputReadLine), to the beginning
+                    // of the next line, and then add it to the queue. This way we won't tag an unneeded NewLine
+                    // as the last output character. This *may* mean that a single NewLine may be missing, but
+                    // that's the risk
+                    //
+                    // While we're reading the stream, this is not a problem, we *have* to put it back because
+                    // the BeginOutputReadLine stripped it. It is only at the end of the stream
+                    // that we don't know whether the stream ended with or without a NewLine.
+                    // The entire routine should probably use Read rather than ReadLine where we don't have any extra
+                    // interpretation of the output.
+                    string receivedOutput;
+                    bool isRedirected = false;
+                    Process p = sender as Process;
+                    // We only add it back when stdin is redirected (this is the other side of the pipeline)
+                    // so only in the case where we are piping to a native executable do we do this
+                    if (p != null && p.StartInfo.RedirectStandardInput)
+                    {
+                        isRedirected = true;
+                    }
+                    
+                    if ( _addNewLine && isRedirected ) {
+                        receivedOutput = Environment.NewLine + outputReceived.Data;
+                    }
+                    else {
+                        // skip the first one, we don't want have an extra line at the beginning
+                        receivedOutput = outputReceived.Data;
+                        _addNewLine = true;
+                    }
+                    _queue.Add(new ProcessOutputObject(receivedOutput, MinishellStream.Output));
                 }
             }
             else
@@ -1725,9 +1765,27 @@ namespace System.Management.Automation
             {
                 AddTextInput(input);
             }
+            else if (_inputFormat == NativeCommandIOFormat.Binary)
+            {
+                AddBinaryInput(input);
+            }
             else // Xml
             {
                 AddXmlInput(input);
+            }
+        }
+
+        private void AddBinaryInput(object input)
+        {
+            try 
+            {
+                // _streamWriter.Write(_pipeline.Process(input));
+                _streamWriter.Write(input);
+                _streamWriter.Flush();
+            }
+            catch (IOException)
+            {
+                this.Dispose();
             }
         }
 
@@ -1792,23 +1850,37 @@ namespace System.Management.Automation
         /// </param>
         internal void Start(Process process, NativeCommandIOFormat inputFormat)
         {
-            Dbg.Assert(process != null, "caller should validate the paramter");
+            Dbg.Assert(process != null, "caller should validate the parameter");
+
+            _inputFormat = inputFormat;
 
             //Get the encoding for writing to native command. Note we get the Encoding
             //from the current scope so a script or function can use a different encoding
             //than global value.
-            Encoding pipeEncoding = _command.Context.GetVariableValue(SpecialVariables.OutputEncodingVarPath) as System.Text.Encoding ??
-                                    Encoding.ASCII;
+            Encoding nativeEncoding;
+            if (_inputFormat == NativeCommandIOFormat.Binary)
+            {
+                nativeEncoding = Encoding.GetEncoding(28591);
+            }
+            else
+            {
+                nativeEncoding = ClrFacade.GetDefaultEncoding();
+
+            }
+            Encoding pipeEncoding = _command.Context.GetVariableValue(SpecialVariables.OutputEncodingVarPath) as System.Text.Encoding ?? nativeEncoding;
 
             _streamWriter = new StreamWriter(process.StandardInput.BaseStream, pipeEncoding);
             _streamWriter.AutoFlush = true;
 
-            _inputFormat = inputFormat;
 
             if (_inputFormat == NativeCommandIOFormat.Xml)
             {
                 _streamWriter.WriteLine(ProcessOutputHandler.XmlCliTag);
                 _xmlSerializer = new Serializer(XmlWriter.Create(_streamWriter));
+            }
+            else if (_inputFormat == NativeCommandIOFormat.Binary)
+            {
+                ;
             }
             else // Text
             {
