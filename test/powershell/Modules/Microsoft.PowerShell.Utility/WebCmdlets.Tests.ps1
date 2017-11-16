@@ -662,8 +662,9 @@ Describe "Invoke-WebRequest tests" -Tags "Feature" {
             {
                 $command = "Invoke-WebRequest -Uri $uri -Body '$body' -Method $method -ContentType $contentType -TimeoutSec 5"
             }
+            $title = "Invoke-WebRequest -Uri $uri -Method $method"
 
-            It "$command" {
+            It "$title" {
 
                 $result = ExecuteWebCommand -command $command
                 ValidateResponse -response $result
@@ -788,9 +789,9 @@ Describe "Invoke-WebRequest tests" -Tags "Feature" {
 
     It "Validate Invoke-WebRequest returns empty RelationLink property if there is no Link Header" {
 
-        $command = "Invoke-WebRequest -Uri http://localhost:8080/PowerShell?test=response"
+        $command = "Invoke-WebRequest -Uri http://localhost:8080/PowerShell?test=response -timeout 5"
         $result = ExecuteWebCommand -command $command
-
+        $result.Error | Should BeNullOrEmpty
         $result.Output.RelationLink.Count | Should Be 0
     }
 
@@ -1786,8 +1787,9 @@ Describe "Invoke-RestMethod tests" -Tags "Feature" {
             {
                 $command = "Invoke-RestMethod -Uri $uri -Body '$body' -Method $method -ContentType $contentType -TimeoutSec 5"
             }
+            $title = "Invoke-RestMethod -Uri $uri -Method $method"
 
-            It "$command" {
+            It "$title" {
 
                 $result = ExecuteWebCommand -command $command
 
@@ -1909,9 +1911,10 @@ Describe "Invoke-RestMethod tests" -Tags "Feature" {
 
     It "Validate Invoke-RestMethod -FollowRelLink doesn't fail if no Link Header is present" {
 
-        $command = "Invoke-RestMethod -Uri 'http://localhost:8081/PowerShell?test=response&output=foo' -FollowRelLink"
+        $command = "Invoke-RestMethod -Uri 'http://localhost:8081/PowerShell?test=response&output=foo' -FollowRelLink -Timeout 5"
         $result = ExecuteWebCommand -command $command
 
+        $result.Error | Should BeNullOrEmpty
         $result.Output | Should BeExactly "foo"
     }
 

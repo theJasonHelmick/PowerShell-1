@@ -14,7 +14,8 @@ Function Stop-HTTPListener {
         [Int] $Port = 8080
     )
 
-    Invoke-WebRequest -Uri "http://localhost:$port/PowerShell?test=exit"
+    # timeout in 5 seconds
+    Invoke-WebRequest -Uri "http://localhost:$port/PowerShell?test=exit" -timeout 5
 }
 
 Function Start-HTTPListener {
@@ -317,12 +318,14 @@ Function Start-HTTPListener {
             }
             catch
             {
-                $errormsg = $_ | convertto-json
+                $errormsg = $_.ToString() 
                 Write-Error $errormsg
             }
             finally
             {
-                $listener.Stop()
+                if ( $listener ) {
+                    $listener.Stop()
+                }
                 Write-Information "Listener is stopped" -InformationAction Continue
             }
         }
@@ -345,7 +348,7 @@ Function Start-HTTPListener {
             {
                 try
                 {
-                    $out = Invoke-WebRequest "http://localhost:${Port}/PowerShell?test=response"
+                    $out = Invoke-WebRequest "http://localhost:${Port}/PowerShell?test=response" -TimeOut 2
                     if ($out.StatusCode -eq 200)
                     {
                         $succeeded = $true
@@ -353,7 +356,8 @@ Function Start-HTTPListener {
                 }
                 catch
                 {
-                    # ignore if listener is not ready
+                    # ignore if listener is not ready, but write a warning
+                    Write-Warning "Invoke-WebRequest 'http://localhost:${Port}/PowerShell?test=response' timeout"
                 }
                 Start-Sleep -milliseconds 100
             }
@@ -369,6 +373,7 @@ Function Start-HTTPListener {
             [pscustomobject]@{
                 PowerShell = $ps
                 AsyncResponse  = $AsyncResponse
+                Port = $Port
                 }
         }
     }
