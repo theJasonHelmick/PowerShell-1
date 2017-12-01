@@ -1,0 +1,14 @@
+{
+    "namespace": [
+        "Microsoft.PowerShell.DesiredStateConfiguration",
+        "Microsoft.PowerShell.DesiredStateConfiguration.Internal",
+        "Microsoft.PowerShell.Cmdletization",
+        "Microsoft.PowerShell.Cmdletization.Xml"
+        ],
+     "class": [
+        { "namespace": "System.Management.Automation.Internal", "class": "TransactionParameters" }
+     ],
+     "classmember": [
+        { "namespace": "Microsoft.PowerShell.Commands", "class": "GetModuleCommand", "property": "CimSession" }
+     ]
+}
