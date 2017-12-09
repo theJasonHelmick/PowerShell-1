@@ -7,7 +7,7 @@ function Get-Exclusions
     $script:ExcludedItems = get-content $exclusionFile | ConvertFrom-Json
 }
 
-function Fix-Name ( $name ) 
+function Repair-Keyword ( $name ) 
 {
     $cSharpKeywords = "abstract","as","base","bool","break","byte","case","catch","char","checked","class","const",
         "continue","decimal","default","delegate","do","double","else","enum","event","explicit","extern","false",
@@ -69,6 +69,21 @@ function Get-tType ( $tType )
     $p -join ", "
 }
 
+function IsOverrideProperty ( $property )
+{
+    $gMeth = $property.GetGetMethod($false)
+    if ( ! $gMeth ) { return $false }
+    return ($gMeth.GetBaseDefinition() -ne $gMeth)
+}
+
+function IsAbstractProperty ( $property )
+{
+    $gMeth = $property.GetGetMethod($false)
+    if ( $gMeth ) { return $gMeth.IsAbstract }
+    $sMeth = $property.GetSetMethod($false)
+    if ( $sMeth ) { return $sMeth.IsAbstract }
+    return $false
+}
 
 function GetTypeName ( $type )
 {
@@ -81,6 +96,9 @@ function GetTypeName ( $type )
         }
         $tname = Get-TypeNickname $tname
         "{0}<{1}>" -f ($tname -replace "``.*"),($names -join ",")
+    }
+    elseif ( $type.fullname ) {
+        $type.fullname
     }
     else {
         $type.name
@@ -116,12 +134,10 @@ function Get-TypeNickname ( [string]$typename )
 
         "System.Char[]"   = "char[]"
         "Char[]"          = "char[]"
-
-
     }
 
-    $typename = $typename -replace "\+","."
-    $typename = $typename -replace "``.*"
+    $typename = $typename -replace "\+","." -replace "``.*" -replace "&"
+    # $typename = $typename -replace "``.*"
     $v = $TypeTranslation["$typename"]
     if ( $v ) { return $v } else { return $typename }
 }
@@ -243,9 +259,17 @@ function EmitProperties ( $t )
             "    {0} {1} {{ get; }}" -f $propertyString,$property.name
         }
         else {
-            $dec += "    public {0} {1} {{" -f $propertyString,$property.name
-            if ( $property.GetMethod ) { $dec += " get { return default($propertyString); }" }
-            if ( $property.SetMethod ) { $dec += " set { }" }
+            # if ( $property.Name -eq "Definition" -and $t.Name -eq "ExternalScriptInfo" ) { wait-debugger }
+            $isOverride = IsOverrideProperty $property
+            $isAbstract = IsAbstractProperty $property
+            $overrideOrAbstract = if ( $isOverride ) { "override " } elseif ( $isAbstract ) { "abstract " } else { "" }
+            $dec += "    public {0}{1} {2} {{" -f $overrideOrAbstract,$propertyString,$property.name
+            $getter = " get { return default($propertyString); }" 
+            if ( $isAbstract ) { $getter = " get;" }
+            $setter = " set { }"
+            if ( $isAbstract ) { $setter = " set;" }
+            if ( $property.GetMethod ) { $dec += $getter}
+            if ( $property.SetMethod ) { $dec += $setter}
             $dec += " }" 
         }
         $dec
@@ -296,8 +320,11 @@ function GetParams ( $method )
     $parm = @()
     foreach($p in $method.GetParameters()) {
         $pType = Get-tType $p.parametertype
-        if ( $pType -match "&$" ) { $pType = $pType.TrimEnd("&") ; $isOut = "out " } else { $isOut = "" }
-        $parm += "${isout}{0} {1}" -f $pType,(Fix-Name $p.Name)
+        if ( ! $pType ) { $pType = "T" }
+        if ( $p.Attributes -band "out" ) { $RefOrOut = "out " }
+        elseif ( $p.parametertype.IsByRef ) { $RefOrOut = "ref " } 
+        else { $RefOrOut = "" }
+        $parm += "${RefOrOut}{0} {1}" -f $pType,(Repair-Keyword $p.Name)
 
     # JWT
         <#
@@ -334,8 +361,17 @@ function Get-NestedTypes ( $t ) {
 function Get-MethodNameAndReturnType ( $method, [ref] $returnT )
 {
     $name = $method.name
-    #$returnType = Get-TypeNickname (GetTypeName $method.ReturnType)
-    $returnType = Get-TypeNickname (Get-tType $method.ReturnType)
+    $returnType = Get-TypeNickname (GetTypeName $method.ReturnType)
+    if ( $method.IsGenericMethod -and $method.IsGenericMethodDefinition )
+    {
+        # $returnType = $method.GetGenericArguments().Name
+        $returnType = Get-TypeNickname ($method.ReturnType.Name)
+        $name += "<$returnType>"
+    }
+    #else
+    #{
+    #    $returnType = Get-TypeNickname (Get-tType $method.ReturnType)
+    #}
     $returnT.Value = $returnType
     switch ( $name ) {
         "op_Equality"           { "${returnType} operator =="; break }
@@ -387,6 +423,7 @@ function EmitMethods ( $t )
         }
         if ( $method.IsStatic ) { $sig += "static" }
         $rt = $null
+        # if ( $t.Name -eq "LanguagePrimitives" -and $method.name -eq "TryConvertTo" ) { wait-debugger }
         $mrt = Get-MethodNameAndReturnType $method ([ref]$rt)
         #if ( $mrt -match "IEnum.*Invoke") { wait-debugger }
         #if ( $mrt.length -eq 0 ) { wait-debugger }
@@ -442,16 +479,16 @@ if ( $assembly.GetType().FullName -ne "System.Reflection.RuntimeAssembly" )
 
 function GetBaseType ( $type )
 {
-    $BaseType = $type.BaseType.FullName
+    $BaseType = Get-tType $type.BaseType
     if ( $type.isClass -and $type.isgenerictypedefinition ) { 
         $s = ""
         if ( $type.ImplementedInterfaces ) {
-            $iface = $type.ImplementedInterfaces | %{ Get-TypeNickName $_ }
+            $iface = $type.ImplementedInterfaces | %{ Get-tType $_ } # Get-TypeNickName $_ }
             $s += ": " + ($iface -join ", ")
         }
         $ga = $type.GetGenericArguments()
         if ( $ga ) {
-            $s += "where {0} : {1}" -f ($ga.Name -join ", "),(($ga.BaseType|%{"$_" -replace "System.ValueType","struct, System.IConvertible"}) -join ", ")
+            $s += " where {0} : {1}" -f ($ga.Name -join ", "),(($ga.BaseType|%{"$_" -replace "System.ValueType","struct, System.IConvertible"}) -join ", ")
         }
         return $s
         #$ttype = $type.GetGenericArguments().Name
@@ -462,7 +499,7 @@ function GetBaseType ( $type )
         # return ("where ${ttype} : {0}" -f ($constraints -join ", "))
     }
     switch ( $BaseType ) {
-        "System.Object" { return }
+        "object" { return }
         "System.Enum" { return }
         default { return ": $BaseType" }
     }
