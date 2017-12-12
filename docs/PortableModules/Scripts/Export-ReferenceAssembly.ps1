@@ -85,6 +85,15 @@ function IsAbstractProperty ( $property )
     return $false
 }
 
+function IsVirtualProperty ( $property )
+{
+    $gMeth = $proeprty.GetGetMethod($false)
+    if ( $gMeth ) { return $gMeth.IsVirtual }
+    $sMeth = $property.GetSetMethod($false)
+    if ( $sMeth ) { return $sMeth.IsVirtual }
+    return $false
+}
+
 function GetTypeName ( $type )
 {
     if ( $type.IsGenericTypeDefinition -or $type.IsGenericType) {
@@ -121,10 +130,17 @@ function Get-TypeNickname ( [string]$typename )
         "String"          = "string"
         "System.String"   = "string"
 
+        "Byte"            = "byte"
+        "System.Byte"     = "byte"
+        "System.Int16"    = "short"
+        "System.UInt16"   = "ushort"
         "Int32"           = "int"
-        "System.Int32"    = "int"
         "UInt32"          = "uint"
+        "System.Int32"    = "int"
         "System.UInt32"   = "uint"
+        "System.Int64"    = "long"
+        "UInt64"          = "ulong"
+        "System.UInt64"   = "ulong"
 
         "Void"            = "void"
         "System.Void"     = "void"
@@ -134,6 +150,7 @@ function Get-TypeNickname ( [string]$typename )
 
         "System.Char[]"   = "char[]"
         "Char[]"          = "char[]"
+
     }
 
     $typename = $typename -replace "\+","." -replace "``.*" -replace "&"
@@ -168,10 +185,18 @@ function GetTypeType ( $type )
 
 function EmitEnum ( $t )
 {
+    $enumName = $t.Name
     $names = [enum]::GetNames($t) | sort-object
-    $names | %{
-        "    $_ = {0}," -f ($t::"$_").value__
+    $underlyingType = Get-TypeNickName ([enum]::GetUnderlyingType($t))
+    $fmt = "  enum {0}"
+    if ( $underlyingType -ne "int" ) { $fmt += " : {1}" }
+    $fmt += " {{"
+    $fmt -f $enumName,$underlyingType
+    if ( $enumName -eq "PowershellTraceKeywords" ) { wait-debugger}
+    foreach ( $name in $names  ) {
+        "    ${name} = {0}," -f ($t::"${name}").value__
     }
+    "  }"
 }
 
 function EmitConstants ( $t )
@@ -262,8 +287,9 @@ function EmitProperties ( $t )
             # if ( $property.Name -eq "Definition" -and $t.Name -eq "ExternalScriptInfo" ) { wait-debugger }
             $isOverride = IsOverrideProperty $property
             $isAbstract = IsAbstractProperty $property
-            $overrideOrAbstract = if ( $isOverride ) { "override " } elseif ( $isAbstract ) { "abstract " } else { "" }
-            $dec += "    public {0}{1} {2} {{" -f $overrideOrAbstract,$propertyString,$property.name
+            $isVirtual  = IsVirtualProperty $property
+            $isSimple = if ( $isOverride ) { "override " } elseif ( $IsVirtual ) { "virtual" } elseif ( $isAbstract ) { "abstract " } else { "" }
+            $dec += "    public {0}{1} {2} {{" -f $isSimple,$propertyString,$property.name
             $getter = " get { return default($propertyString); }" 
             if ( $isAbstract ) { $getter = " get;" }
             $setter = " set { }"
@@ -457,12 +483,13 @@ function EmitMethods ( $t )
 function EmitEvents ( $t )
 {
     $events = $t.GetEvents("Instance,Static,NonPublic,Public,DeclaredOnly") | sort-object name
-    $isAbstract = $t.IsAbstract
+    $isAbstract = [bool]$t.IsAbstract
+    $isStatic = [bool]$t.IsStatic
     foreach ( $event in $events ) {
         $eventString = ""
         $eventString = "    public"
-        if ( $t.IsAbstract ) { $eventString += " abstract" }
-        elseif ( $t.IsStatic ) { $eventString += " static" }
+        if ( IsAbstract ) { $eventString += " abstract" }
+        elseif ( $IsStatic ) { $eventString += " static" }
         $eventString += " event"
         $eventString += " " + $event.EventHandlerType.ToString() -replace "``.\[","<" -replace "\]",">"
         $eventString += " " + $event.Name
@@ -625,9 +652,9 @@ foreach ( $g in $NamespaceTypes ) {
         # "  public {0} {1} {2} {{" -f (IsStaticClass $t), (GetTypeType $t), $t.Name
         switch ( $typetype ) {
             "enum" {
-                $dec -join " "
+                # $dec -join " "
                 EmitEnum $t
-                "  }"
+                #"  }"
                 break
             }
             # handle interface!!!!
