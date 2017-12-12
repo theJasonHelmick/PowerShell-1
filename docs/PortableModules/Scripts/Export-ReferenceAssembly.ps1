@@ -87,7 +87,7 @@ function IsAbstractProperty ( $property )
 
 function IsVirtualProperty ( $property )
 {
-    $gMeth = $proeprty.GetGetMethod($false)
+    $gMeth = $property.GetGetMethod($false)
     if ( $gMeth ) { return $gMeth.IsVirtual }
     $sMeth = $property.GetSetMethod($false)
     if ( $sMeth ) { return $sMeth.IsVirtual }
@@ -99,11 +99,17 @@ function GetTypeName ( $type )
     if ( $type.IsGenericTypeDefinition -or $type.IsGenericType) {
         $names = $type.GenericTypeParameters.Name
         $tname = Get-TypeNickname $type.fullname
-        if ( ! $tname ) { $tname = Get-TypeNickname $type.name }
+        if ( $type.Name -eq "T" -or $type.Name -eq "T&" ) { 
+            $tname = $type.Name
+        }
+        elseif ( ! $tname ) { 
+            $tname = Get-TypeNickname ($type.namespace + "." + $type.name) 
+        }
         if ( ! $names ) { 
             $names = $type.GenericTypeArguments 
         }
         $tname = Get-TypeNickname $tname
+        if ( $tname -match "^Collection" ) { wait-debugger }
         "{0}<{1}>" -f ($tname -replace "``.*"),($names -join ",")
     }
     elseif ( $type.fullname ) {
@@ -192,7 +198,7 @@ function EmitEnum ( $t )
     if ( $underlyingType -ne "int" ) { $fmt += " : {1}" }
     $fmt += " {{"
     $fmt -f $enumName,$underlyingType
-    if ( $enumName -eq "PowershellTraceKeywords" ) { wait-debugger}
+    # if ( $enumName -eq "PowershellTraceKeywords" ) { wait-debugger}
     foreach ( $name in $names  ) {
         "    ${name} = {0}," -f ($t::"${name}").value__
     }
@@ -288,8 +294,19 @@ function EmitProperties ( $t )
             $isOverride = IsOverrideProperty $property
             $isAbstract = IsAbstractProperty $property
             $isVirtual  = IsVirtualProperty $property
-            $isSimple = if ( $isOverride ) { "override " } elseif ( $IsVirtual ) { "virtual" } elseif ( $isAbstract ) { "abstract " } else { "" }
-            $dec += "    public {0}{1} {2} {{" -f $isSimple,$propertyString,$property.name
+            $isSimple = if ( $isOverride ) { "override " } elseif ( $IsVirtual ) { "virtual " } elseif ( $isAbstract ) { "abstract " } else { "" }
+            if ( $property.GetIndexParameters() ) {
+                $Indexer = $property.GetIndexParameters()
+                # $propertyString = JWT $indexer.member.propertytype
+                $propertyString = Get-TypeNickname (GetTypeName $property.PropertyType)
+                if ( $propertyString -match "Collection" ) { wait-debugger }
+                $indexerString = "this[{0} {1}]" -f (Get-TypeNickname $indexer.ParameterType),$indexer.Name
+
+                $dec += "    public {0}{1} {2} {{" -f $isSimple,$propertyString,$indexerString
+            }
+            else {
+                $dec += "    public {0}{1} {2} {{" -f $isSimple,$propertyString,$property.name
+            }
             $getter = " get { return default($propertyString); }" 
             if ( $isAbstract ) { $getter = " get;" }
             $setter = " set { }"
@@ -483,9 +500,10 @@ function EmitMethods ( $t )
 function EmitEvents ( $t )
 {
     $events = $t.GetEvents("Instance,Static,NonPublic,Public,DeclaredOnly") | sort-object name
-    $isAbstract = [bool]$t.IsAbstract
-    $isStatic = [bool]$t.IsStatic
     foreach ( $event in $events ) {
+        $addMethod = $event.GetAddMethod()
+        $isAbstract = $addMethod.IsAbstract
+        $isStatic = $addMethod.IsStatic
         $eventString = ""
         $eventString = "    public"
         if ( IsAbstract ) { $eventString += " abstract" }
@@ -515,7 +533,10 @@ function GetBaseType ( $type )
         }
         $ga = $type.GetGenericArguments()
         if ( $ga ) {
-            $s += " where {0} : {1}" -f ($ga.Name -join ", "),(($ga.BaseType|%{"$_" -replace "System.ValueType","struct, System.IConvertible"}) -join ", ")
+            $constraints = $ga.BaseType|?{$_.fullname -ne "System.Object"}|%{"$_" -replace "System.ValueType","struct, System.IConvertible"}
+            if ( $constraints ) {
+            $s += " where {0} : {1}" -f ($ga.Name -join ", "),($constraints -join ", ")
+            }
         }
         return $s
         #$ttype = $type.GetGenericArguments().Name
