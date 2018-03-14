@@ -367,11 +367,12 @@ $redirectTests = @(
     @{redirectType = 'relative'; redirectedMethod = 'GET'}
 )
 
-$PendingCertificateTest = $false
-# we can't check for Certificate on MacOS and Centos libcurl (currently 7.29.0) returns the following error:
+# we can't check for Certificate on MacOS, RehHat or Centos because libcurl (currently 7.29.0) returns the following error:
 # The handler does not support client authentication certificates with this combination of libcurl (7.29.0) and its SSL backend ("NSS/3.21 Basic ECC")
-if ( $IsMacOS ) { $PendingCertificateTest = $true }
-if ( test-path /etc/centos-release ) { $PendingCertificateTest = $true }
+$PendingNetworkTest = $false
+$isCentos = test-path /etc/centos-release
+$isRedhat = test-path /etc/redhat-release
+if ( $isCentos -or $IsMacOS -or $isRedHat ) { $PendingNetworkTest = $true }
 
 Describe "Invoke-WebRequest tests" -Tags "Feature" {
     BeforeAll {
@@ -1213,7 +1214,7 @@ Describe "Invoke-WebRequest tests" -Tags "Feature" {
 
         # Test skipped on macOS and CentOS pending support for Client Certificate Authentication
         # https://github.com/PowerShell/PowerShell/issues/4650
-        It "Verifies Invoke-WebRequest Certificate Authentication Successful with -Certificate" -Pending:$PendingCertificateTest {
+        It "Verifies Invoke-WebRequest Certificate Authentication Successful with -Certificate" -Pending:$PendingNetworkTest {
             $uri = Get-WebListenerUrl -Https -Test 'Cert'
             $certificate = Get-WebListenerClientCertificate
             $result = Invoke-WebRequest -Uri $uri -Certificate $certificate -SkipCertificateCheck |
@@ -1584,14 +1585,14 @@ Describe "Invoke-WebRequest tests" -Tags "Feature" {
                 @{ Test = @{SslProtocol = 'Tls11'; ActualProtocol = 'Tls11'}; Pending = $false }
                 @{ Test = @{SslProtocol = 'Tls12'; ActualProtocol = 'Tls12'}; Pending = $false }
                 # macOS does not support multiple SslProtocols
-                @{ Test = @{SslProtocol = 'Tls, Tls11, Tls12'; ActualProtocol = 'Tls12'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls11, Tls12'; ActualProtocol = 'Tls12'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls, Tls11, Tls12'; ActualProtocol = 'Tls11'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls11, Tls12'; ActualProtocol = 'Tls11'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls, Tls11'; ActualProtocol = 'Tls11'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls, Tls11, Tls12'; ActualProtocol = 'Tls'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls, Tls11'; ActualProtocol = 'Tls'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls, Tls12'; ActualProtocol = 'Tls'}; Pending = $IsMacOS }
+                @{ Test = @{SslProtocol = 'Tls, Tls11, Tls12'; ActualProtocol = 'Tls12'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls11, Tls12'; ActualProtocol = 'Tls12'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls, Tls11, Tls12'; ActualProtocol = 'Tls11'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls11, Tls12'; ActualProtocol = 'Tls11'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls, Tls11'; ActualProtocol = 'Tls11'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls, Tls11, Tls12'; ActualProtocol = 'Tls'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls, Tls11'; ActualProtocol = 'Tls'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls, Tls12'; ActualProtocol = 'Tls'}; Pending = $PendingNetworkTest }
                 # macOS does not support multiple SslProtocols and possible CoreFX issue for this combo on Linux
                 @{ Test = @{SslProtocol = 'Tls, Tls12'; ActualProtocol = 'Tls12'}; Pending = -not $IsWindows }
             )
@@ -1604,9 +1605,9 @@ Describe "Invoke-WebRequest tests" -Tags "Feature" {
                 @{ Test = @{IntendedProtocol = 'Tls11'; ActualProtocol = 'Tls'}; Pending = $false }
                 @{ Test = @{IntendedProtocol = 'Tls12'; ActualProtocol = 'Tls'}; Pending = $false }
                 # macOS does not support multiple SslProtocols
-                @{ Test = @{IntendedProtocol = 'Tls11, Tls12'; ActualProtocol = 'Tls'}; Pending = $IsMacOS }
-                @{ Test = @{IntendedProtocol = 'Tls, Tls12'; ActualProtocol = 'Tls11'}; Pending = $IsMacOS }
-                @{ Test = @{IntendedProtocol = 'Tls, Tls11'; ActualProtocol = 'Tls12'}; Pending = $IsMacOS }
+                @{ Test = @{IntendedProtocol = 'Tls11, Tls12'; ActualProtocol = 'Tls'}; Pending = $PendingNetworkTest }
+                @{ Test = @{IntendedProtocol = 'Tls, Tls12'; ActualProtocol = 'Tls11'}; Pending = $PendingNetworkTest }
+                @{ Test = @{IntendedProtocol = 'Tls, Tls11'; ActualProtocol = 'Tls12'}; Pending = $PendingNetworkTest }
             )
         }
 
@@ -1781,6 +1782,7 @@ Describe "Invoke-RestMethod tests" -Tags "Feature" {
         $WebListener = Start-WebListener
     }
 
+    $testcases = 
     #User-Agent changes on different platforms, so tests should only be run if on the correct platform
     It "Invoke-RestMethod returns Correct User-Agent on MacOSX" -Skip:(!$IsMacOS) {
         $uri = Get-WebListenerUrl -Test 'Get'
@@ -2341,7 +2343,7 @@ Describe "Invoke-RestMethod tests" -Tags "Feature" {
 
         # Test skipped on macOS and CentOS pending support for Client Certificate Authentication
         # https://github.com/PowerShell/PowerShell/issues/4650
-        It "Verifies Invoke-RestMethod Certificate Authentication Successful with -Certificate" -Pending:$PendingCertificateTest {
+        It "Verifies Invoke-RestMethod Certificate Authentication Successful with -Certificate" -Pending:$PendingNetworkTest {
             $uri = Get-WebListenerUrl -Https -Test 'Cert'
             $certificate = Get-WebListenerClientCertificate
             $result = Invoke-RestMethod -uri $uri -Certificate $certificate -SkipCertificateCheck
@@ -2854,14 +2856,14 @@ Describe "Invoke-RestMethod tests" -Tags "Feature" {
                 @{ Test = @{SslProtocol = 'Tls11'; ActualProtocol = 'Tls11'}; Pending = $false }
                 @{ Test = @{SslProtocol = 'Tls12'; ActualProtocol = 'Tls12'}; Pending = $false }
                 # macOS does not support multiple SslProtocols
-                @{ Test = @{SslProtocol = 'Tls, Tls11, Tls12'; ActualProtocol = 'Tls12'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls11, Tls12'; ActualProtocol = 'Tls12'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls, Tls11, Tls12'; ActualProtocol = 'Tls11'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls11, Tls12'; ActualProtocol = 'Tls11'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls, Tls11'; ActualProtocol = 'Tls11'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls, Tls11, Tls12'; ActualProtocol = 'Tls'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls, Tls11'; ActualProtocol = 'Tls'}; Pending = $IsMacOS }
-                @{ Test = @{SslProtocol = 'Tls, Tls12'; ActualProtocol = 'Tls'}; Pending = $IsMacOS }
+                @{ Test = @{SslProtocol = 'Tls, Tls11, Tls12'; ActualProtocol = 'Tls12'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls11, Tls12'; ActualProtocol = 'Tls12'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls, Tls11, Tls12'; ActualProtocol = 'Tls11'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls11, Tls12'; ActualProtocol = 'Tls11'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls, Tls11'; ActualProtocol = 'Tls11'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls, Tls11, Tls12'; ActualProtocol = 'Tls'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls, Tls11'; ActualProtocol = 'Tls'}; Pending = $PendingNetworkTest }
+                @{ Test = @{SslProtocol = 'Tls, Tls12'; ActualProtocol = 'Tls'}; Pending = $PendingNetworkTest }
                 # macOS does not support multiple SslProtocols and possible CoreFX issue for this combo on Linux
                 @{ Test = @{SslProtocol = 'Tls, Tls12'; ActualProtocol = 'Tls12'}; Pending = -not $IsWindows }
             )
@@ -2874,9 +2876,9 @@ Describe "Invoke-RestMethod tests" -Tags "Feature" {
                 @{ Test = @{IntendedProtocol = 'Tls11'; ActualProtocol = 'Tls'}; Pending = $false }
                 @{ Test = @{IntendedProtocol = 'Tls12'; ActualProtocol = 'Tls'}; Pending = $false }
                 # macOS does not support multiple SslProtocols
-                @{ Test = @{IntendedProtocol = 'Tls11, Tls12'; ActualProtocol = 'Tls'}; Pending = $IsMacOS }
-                @{ Test = @{IntendedProtocol = 'Tls, Tls12'; ActualProtocol = 'Tls11'}; Pending = $IsMacOS }
-                @{ Test = @{IntendedProtocol = 'Tls, Tls11'; ActualProtocol = 'Tls12'}; Pending = $IsMacOS }
+                @{ Test = @{IntendedProtocol = 'Tls11, Tls12'; ActualProtocol = 'Tls'}; Pending = $PendingNetworkTest }
+                @{ Test = @{IntendedProtocol = 'Tls, Tls12'; ActualProtocol = 'Tls11'}; Pending = $PendingNetworkTest }
+                @{ Test = @{IntendedProtocol = 'Tls, Tls11'; ActualProtocol = 'Tls12'}; Pending = $PendingNetworkTest }
             )
         }
 

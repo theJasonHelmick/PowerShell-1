@@ -80,7 +80,37 @@ Describe 'Get-Help -Online opens the default web browser and navigates to the cm
             # We are not able to access Registry, skipping test.
         }
     }
+    elseif ( $IsLinux ) {
+        # Don't bother to run the test if xdg-open doesn't exist as this is
+        # what we use internally on Linux to launch a browser
+        if ( ! (Get-Command xdg-open -ErrorVariable SilentlyContinue) ) {
+            $skipTest = $true
+            break
+        }
+        # use xdg-settings to try to determine if there's a default
+        # web browser, if xdg-settings for the default-web-browser doesn't exist,
+        # we won't be launching a browser
+        try {
+            $result = xdg-settings get default-web-browser 2>&1
+            if ( $? -ne 0 ) {
+                $skipTest = $true
+            }
+            # even if we have a browser, we need to not launch a console based one so
+            # if $env:DISPLAY is set, we are probably in an X-Windows environment which is ok.
+            # We need to skip this test if env:DISPLAY is not set.
+            # It's still possible that we are running in an xterm, on a system where
+            # the default web browser is console based, but we've done what we can
+            # to catch most of the conditions where we shouldn't run the test
+            if ( ! $env:DISPLAY ) {
+                $skipTest = $true
+            }
+        }
+        catch [system.management.automation.commandnotfoundexception] {
+            $skipTest = $true
+        }
+    }
 
+    # this test, if successful, will leak a browser window that is not cleaned up
     It "Get-Help get-process -online" -skip:$skipTest {
         { Get-Help get-process -online } | Should -Not -Throw
     }
