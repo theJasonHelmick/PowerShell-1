@@ -249,6 +249,8 @@ namespace TestHost
             get {  return Thread.CurrentThread.CurrentUICulture; }
         }
 
+        public override bool DebuggerEnabled { get; set; } = false;
+
         public override Guid InstanceId
         {
             get { return _instanceId; }
