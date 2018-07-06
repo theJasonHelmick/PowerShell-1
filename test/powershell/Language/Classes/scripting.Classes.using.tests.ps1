@@ -293,7 +293,7 @@ using module Foo
 using module FooWithManifest
 class Bar : Foo {}
 "@
-            $err.FullyQualifiedErrorId | Should -Be AmbiguousTypeReference
+            $err.ErrorId | Should -Be AmbiguousTypeReference
         }
 
         It "cannot use as [...]" {
@@ -302,7 +302,7 @@ using module Foo
 using module FooWithManifest
 [Foo]
 "@
-            $err.FullyQualifiedErrorId | Should -BeExactly 'AmbiguousTypeReference'
+            $err.ErrorId | Should -BeExactly 'AmbiguousTypeReference'
         }
 
         It "cannot use in New-Object" {
@@ -466,8 +466,9 @@ class Bar : Foo {}
         }
 
         It "cannot be accessed by relative path without .\ from a script" {
-            $err = Get-RuntimeError '& TestDrive:\FooRelativeConsumerErr.ps1'
-            $err.FullyQualifiedErrorId | Should -BeExactly 'ModuleNotFoundDuringParse'
+            # collect only the first error
+            $err = Get-RuntimeError '& TestDrive:\FooRelativeConsumerErr.ps1' | Select-Object -First 1
+            $err.ErrorId | Should -BeExactly 'ModuleNotFoundDuringParse'
         }
 
         It "can be accessed by absolute path" {
@@ -497,7 +498,7 @@ using module $resolvedTestDrivePath\FooForPaths\FooForPaths.psm1
 using module .\FooForPaths
 [Foo]::new()
 "@
-            $err.FullyQualifiedErrorId | Should -BeExactly 'ModuleNotFoundDuringParse'
+            $err.ErrorId | Should -BeExactly 'ModuleNotFoundDuringParse'
 
             Push-Location TestDrive:\modules
             try {
@@ -518,7 +519,7 @@ using module .\FooForPaths
 using module FooForPaths
 [Foo]::new()
 "@
-                $err.FullyQualifiedErrorId | Should -BeExactly 'ModuleNotFoundDuringParse'
+                $err.ErrorId | Should -BeExactly 'ModuleNotFoundDuringParse'
             } finally {
                 Pop-Location
             }

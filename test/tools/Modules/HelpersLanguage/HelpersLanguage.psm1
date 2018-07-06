@@ -35,7 +35,14 @@ function Get-RuntimeError
     }
     catch
     {
-        return $_.Exception.InnerException.ErrorRecord
+        # we need to hand back the errors from the inner exception which has the
+        # information about the actual errors
+        if ( $_.Exception.InnerException.Errors ) {
+            return $_.Exception.InnerException.Errors
+        }
+        else {
+            return $_.Exception.InnerException.ErrorRecord
+        }
     }
 }
 
@@ -69,17 +76,15 @@ function ShouldBeParseError
         [switch]$CheckColumnNumber
     )
 
-    Context "Parse error expected: <<$src>>" {
+    Context "Parse or Runtime error expected: <<$src>>" {
         # Test case error if this fails
         $expectedErrors.Count | Should Be $expectedOffsets.Count
 
         if ($SkipAndCheckRuntimeError)
         {
-            It "error should happen at parse time, not at runtime" -Skip {}
             $errors = Get-RuntimeError -Src $src
-            # for runtime errors we will only get the first one
-            $expectedErrors = ,$expectedErrors[0]
-            $expectedOffsets = ,$expectedOffsets[0]
+            $expectedErrors = $expectedErrors
+            $expectedOffsets = $expectedOffsets
         }
         else
         {
@@ -90,19 +95,12 @@ function ShouldBeParseError
         for ($i = 0; $i -lt $errors.Count; ++$i)
         {
             $err = $errors[$i]
+            $errorId = $err.ErrorId
 
-            if ($SkipAndCheckRuntimeError)
-            {
-                $errorId = $err.FullyQualifiedErrorId
-            }
-            else
-            {
-                $errorId = $err.ErrorId
-            }
             It "Error Id (iteration:$i)" { $errorId | Should Be $expectedErrors[$i] }
-            $acutalPostion = $err.Extent.StartScriptPosition.Offset
-            if ( $CheckColumnNumber ) { $acutalPostion = $err.Extent.StartScriptPosition.ColumnNumber }
-            It "Error position (iteration:$i)" -Pending:$SkipAndCheckRuntimeError { $acutalPostion | Should Be $expectedOffsets[$i] }
+            $actualPostion = $err.Extent.StartScriptPosition.Offset
+            if ( $CheckColumnNumber ) { $actualPostion = $err.Extent.StartScriptPosition.ColumnNumber }
+            It "Error position (iteration:$i)" { $actualPostion | Should Be $expectedOffsets[$i] }
        }
     }
 }
