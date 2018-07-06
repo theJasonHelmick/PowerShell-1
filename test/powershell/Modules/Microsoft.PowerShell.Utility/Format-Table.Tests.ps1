@@ -1,6 +1,14 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 Describe "Format-Table" -Tags "CI" {
+        BeforeEach {
+            # allow the defaults to take effect
+            Remove-Variable -Scope Global -Name FormatEnumerationLimit -EA SilentlyContinue
+        }
+        AfterEach {
+            # allow the defaults to take effect
+            Remove-Variable -Scope Global -Name FormatEnumerationLimit -EA SilentlyContinue
+        }
         It "Should call format table on piped input without error" {
                 { Get-Date | Format-Table } | Should -Not -Throw
         }
@@ -35,53 +43,49 @@ Describe "Format-Table" -Tags "CI" {
         }
 
         It "Format-Table with Negative Count should work" {
-                $FormatEnumerationLimit = -1
+                $Global:FormatEnumerationLimit = -1
                 $result = Format-Table -inputobject @{'test'= 1, 2}
                 $resultStr = $result | Out-String
                 $resultStr | Should -Match "test\s+{1, 2}"
         }
 
-        # Pending on issue#888
-        It "Format-Table with Zero Count should work" -Pending {
-                $FormatEnumerationLimit = 0
+        It "Format-Table with Zero Count should work" {
+                $Global:FormatEnumerationLimit = 0
                 $result = Format-Table -inputobject @{'test'= 1, 2}
                 $resultStr = $result | Out-String
                 $resultStr | Should -Match "test\s+{...}"
         }
 
         It "Format-Table with Less Count should work" {
-                $FormatEnumerationLimit = 1
+                $Global:FormatEnumerationLimit = 1
                 $result = Format-Table -inputobject @{'test'= 1, 2}
                 $resultStr = $result | Out-String
                 $resultStr | Should -Match "test\s+{1...}"
         }
 
         It "Format-Table with More Count should work" {
-                $FormatEnumerationLimit = 10
+                $Global:FormatEnumerationLimit = 10
                 $result = Format-Table -inputobject @{'test'= 1, 2}
                 $resultStr = $result | Out-String
                 $resultStr | Should -Match "test\s+{1, 2}"
         }
 
         It "Format-Table with Equal Count should work" {
-                $FormatEnumerationLimit = 2
+                $Global:FormatEnumerationLimit = 2
                 $result = Format-Table -inputobject @{'test'= 1, 2}
                 $resultStr = $result | Out-String
                 $resultStr | Should -Match "test\s+{1, 2}"
         }
 
-        # Pending on issue#888
-        It "Format-Table with Bogus Count should throw Exception" -Pending {
-                $FormatEnumerationLimit = "abc"
+        It "Format-Table with Bogus Count should not throw Exception" {
+                $Global:FormatEnumerationLimit = "abc"
                 $result = Format-Table -inputobject @{'test'= 1, 2}
                 $resultStr = $result|Out-String
                 $resultStr | Should -Match "test\s+{1, 2}"
         }
 
-        # Pending on issue#888
-        It "Format-Table with Var Deleted should throw Exception" -Pending {
-                $FormatEnumerationLimit = 2
-                Remove-Variable FormatEnumerationLimit
+        It "Format-Table with Var Deleted should not throw Exception" {
+                Remove-Variable -Scope Global -Name FormatEnumerationLimit -EA SilentlyContinue
                 $result = Format-Table -inputobject @{'test'= 1, 2}
                 $resultStr = $result | Out-String
                 $resultStr | Should -Match "test\s+{1, 2}"
