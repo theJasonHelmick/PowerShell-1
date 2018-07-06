@@ -132,6 +132,11 @@ public class TestDynamic : DynamicObject
 
     private readonly int _serialNumber;
 
+    public static void ResetSerialNumber()
+    {
+        s_lastSerialNumber = 0;
+    }
+
     public TestDynamic()
     {
         _serialNumber = ++s_lastSerialNumber;

@@ -24,6 +24,12 @@ Describe "Adapter Tests" -tags "CI" {
             $document = new-object System.Xml.XmlDocument
             $document.LoadXml("<book ISBN='12345'><title>Pride And Prejudice</title><price>19.95</price></book>")
             $doc = $document.DocumentElement
+
+            # Only add the type if it is not available
+            if ( ! ( "TestDynamic" -as [Type] ) ) {
+                Add-TestDynamicType
+            }
+
         }
 
         It "Can get a Dotnet parameterized property" {
@@ -159,7 +165,12 @@ Describe "Adapter Tests" -tags "CI" {
     }
 
     Context "ForEach Magic Method Adapter Tests" {
-        It "Common ForEach magic method tests" -Pending:$true {
+        It "Common ForEach magic method tests" {
+            [TestDynamic]::ResetSerialNumber()
+            $dObjs = 1..5 | %{ [TestDynamic]::new() }
+            $results  = $dObjs.ForEach({($_.SerialNumber -gt 0) -and ($_.SerialNumber -eq $_.HiddenMethod())})
+            $results | Sort-Object -Unique | Should -BeTrue
+
         }
 
         It "ForEach magic method works for singletons" {
@@ -188,22 +199,29 @@ Describe "Adapter Tests" -tags "CI" {
             $x.ForEach(5) | Should -Be 10
         }
 
-        # Pending: https://github.com/PowerShell/PowerShell/issues/6567
-        It "ForEach magic method works for dynamic (DLR) things" -Pending:$true {
-            Add-TestDynamicType
+        It "ForEach magic method works for dynamic (DLR) things" {
 
             $dynObj = [TestDynamic]::new()
-            $results = @($dynObj, $dynObj).ForEach('FooProp')
+            $results = @($dynObj, $dynObj).ForEach({$_.FooProp})
             $results.Count | Should -Be 2
             $results[0] | Should -Be 123
             $results[1] | Should -Be 123
+        }
 
-            # TODO: dynamic method calls
+        It "Dynamic method calls work for dynamic (DLR) things" {
+            $dynObj = [TestDynamic]::new()
+            $expectedValue = $dynObj.GetType().GetField("_serialNumber","Public,NonPublic,Instance,Static").GetValue($dynObj)
+            $dynObj.ForEach({$_.HiddenMethod()}) | Should -Be $expectedValue
         }
     }
 
     Context "Where Magic Method Adapter Tests" {
-        It "Common Where magic method tests" -Pending:$true {
+        It "Common Where magic method tests" {
+            [TestDynamic]::ResetSerialNumber()
+            $dynObjs = 1..10 | %{ [TestDynamic]::new() }
+            $results = $dynObjs.Where({$_.SerialNumber -gt 5})
+            $results.Count | Should -Be 5
+            $results.SerialNumber | Should -BeGreaterThan 5
         }
 
         It "Where magic method works for singletons" {
