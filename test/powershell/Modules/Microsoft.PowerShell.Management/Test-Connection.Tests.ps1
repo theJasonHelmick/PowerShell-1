@@ -19,8 +19,14 @@ Describe "Test-Connection" -tags "CI" {
         # $targetAddressIPv6 = "::1"
         $targetAddressIPv6 = [System.Net.Dns]::GetHostEntry($targetName).AddressList[0].IPAddressToString
         $UnreachableAddress = "10.11.12.13"
-        # this resolves to an actual IP raher than 127.0.0.1
-        $realAddress = [System.Net.Dns]::GetHostEntry($hostName).AddressList[0].IPAddressToString
+        # this resolves to an actual IP rather than 127.0.0.1
+        # this can also include both IPv4 and IPv6, so select InterNetwork rather than InterNetworkV6
+        $realAddress = [System.Net.Dns]::GetHostEntry($hostName).AddressList | 
+            Where-Object {$_.AddressFamily -eq "InterNetwork"} |
+            Select-Object -First 1 |
+            Foreach-Object {$_.IPAddressToString}
+        # under some environments, we can't round trip this and retrieve the real name from the address
+        # in this case we will simply use the hostname
         $jobContinues = Start-Job { Test-Connection $using:targetAddress -Continues }
     }
 
@@ -93,15 +99,18 @@ Describe "Test-Connection" -tags "CI" {
         It "Force IPv4 with explicit PingOptions" {
             $result1 = Test-Connection $hostName -Count 1 -IPv4 -MaxHops 10 -DontFragment
 
-            $result2 = Test-Connection $hostName -Count 1 -IPv4 -MaxHops 1 -DontFragment
+            # explicitly go to google dns. this test will pass even if the destination is unreachable
+            # it's more about breaking out of the loop
+            $result2 = Test-Connection 8.8.8.8 -Count 1 -IPv4 -MaxHops 1 -DontFragment
 
             $result1.Replies[0].Address              | Should -BeExactly $realAddress
             # .Net Core (.Net Framework) returns Options based on default PingOptions() constructor (Ttl=128, DontFragment = false).
             # After .Net Core fix we should have 'DontFragment | Should -Be $true' here.
             $result1.Replies[0].Options.Ttl          | Should -BeLessOrEqual 128
             if (!$isWindows) {
-                $result1.Replies[0].Options.DontFragment | Should -Be $True
-                $result2.Replies[0].Status               | Should -BeExactly "Success"
+                $result1.Replies[0].Options.DontFragment | Should -BeNullOrEmpty
+                # depending on the network configuration any of the following should be returned
+                $result2.Replies[0].Status               | Should -BeIn "TtlExpired","TimedOut","Success"
             } else {
                 $result1.Replies[0].Options.DontFragment | Should -BeFalse
                 # We expect 'TtlExpired' but if a router don't reply we get `TimeOut`
@@ -196,9 +205,8 @@ Describe "Test-Connection" -tags "CI" {
 }
 
     # TODO: We skip the MTUSizeDetect tests on Unix because we expect 'TtlExpired' but get 'TimeOut' internally from .Net Core
-    # Skipping on VSTS in Windows due to `TimedOut`
     Context "MTUSizeDetect" {
-        It "MTUSizeDetect works" -Pending:(!$isWindows) {
+        It "MTUSizeDetect works" -pending:($IsMacOS) {
             $result = Test-Connection $hostName -MTUSizeDetect
 
             $result | Should -BeOfType "System.Net.NetworkInformation.PingReply"
@@ -207,7 +215,7 @@ Describe "Test-Connection" -tags "CI" {
             $result.MTUSize | Should -BeGreaterThan 0
         }
 
-        It "Quiet works" -Pending:(!$isWindows) {
+        It "Quiet works" -pending:($IsMacOS) {
             $result = Test-Connection $hostName -MTUSizeDetect -Quiet
 
             $result | Should -BeOfType "Int32"
@@ -216,9 +224,9 @@ Describe "Test-Connection" -tags "CI" {
     }
 
     Context "TraceRoute" {
-        # Hangs in VSTS Linux
         It "TraceRoute works" {
-            $result = Test-Connection $hostName -TraceRoute
+            # real address is an ipv4 address, so force IPv4
+            $result = Test-Connection $hostName -TraceRoute -IPv4
             $replies = $result.Replies
             # Check target host reply.
             $pingReplies = $replies[-1].PingReplies
@@ -243,7 +251,6 @@ Describe "Test-Connection" -tags "CI" {
             }
         }
 
-        # Hangs in VSTS Linux
         It "Quiet works" {
             $result = Test-Connection $hostName -TraceRoute -Quiet 6>$null
 
