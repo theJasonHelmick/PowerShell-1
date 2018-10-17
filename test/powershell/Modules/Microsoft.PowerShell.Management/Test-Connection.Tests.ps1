@@ -78,7 +78,8 @@ Describe "Test-Connection" -tags "CI" {
             { $result = Test-Connection "fakeHost" -Count 1 -Quiet -ErrorAction Stop } | Should -Throw -ErrorId "TestConnectionException,Microsoft.PowerShell.Commands.TestConnectionCommand"
             # Error code = 11001 - Host not found.
             if (!$isWindows) {
-                $Error[0].Exception.InnerException.ErrorCode | Should -Be 6
+                # some pings will have this error code as 11, others will return 6
+                $Error[0].Exception.InnerException.ErrorCode | Should -BeIn 6,11
             } else {
                 $Error[0].Exception.InnerException.ErrorCode | Should -Be 11001
             }
@@ -108,7 +109,13 @@ Describe "Test-Connection" -tags "CI" {
             # After .Net Core fix we should have 'DontFragment | Should -Be $true' here.
             $result1.Replies[0].Options.Ttl          | Should -BeLessOrEqual 128
             if (!$isWindows) {
-                $result1.Replies[0].Options.DontFragment | Should -BeNullOrEmpty
+                # this relies on the container having this environment variable
+                if ( $env:__InContainer -eq 1) {
+                    $result1.Replies[0].Options.DontFragment | Should -Be $true
+                }
+                else {
+                    $result1.Replies[0].Options.DontFragment | Should -BeNullOrEmpty
+                }
                 # depending on the network configuration any of the following should be returned
                 $result2.Replies[0].Status               | Should -BeIn "TtlExpired","TimedOut","Success"
             } else {
