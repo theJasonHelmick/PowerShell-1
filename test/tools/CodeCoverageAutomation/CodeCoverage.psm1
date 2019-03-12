@@ -104,14 +104,14 @@ function Write-LogPassThru
 		if ( $Data -ne $null ) {
 			$pad = $data.keys | %{ $l = 0 } { if ( $_.length -gt $l ) { $l = $_.length } } { $l }
 			foreach ( $key in $data.keys ) {
-				$fmtStr = "{0:d} - {0:t} : {1,-${pad}} = {2}" 
+				$fmtStr = "{0:d} - {0:t} : {1,-${pad}} = {2}"
 				$formattedMessage = $fmtStr -f ([datetime]::now), $key, $data.$key
 				if ( $HostOnly ) {
 					Write-Verbose -verbose $formattedMessage
 				}
 				else {
 					Add-Content -Path $Path -Value $formattedMessage -PassThru -Force
-				}	
+				}
 			}
 		}
     }
@@ -190,7 +190,7 @@ function Initialize-Environment
     }
 }
 
-# all of the code coverage files are part of the 
+# all of the code coverage files are part of the
 # CodeCoverage.zip artifact. In that artifact are three zip archives
 # CodeCoverage.zip - the build of PowerShell to use
 # OpenCover.zip    - the OpenCover Module
@@ -276,7 +276,7 @@ function Receive-Package
 function Export-LogArchive
 {
 	param ( [Parameter(Mandatory=$true)][string[]]$log )
-	# only archive files that exist 
+	# only archive files that exist
 	$logpaths = $log | where-object { test-path $_ }
 	if ( ! $logPaths ) {
 		Write-LogPassThru -Message "No logs to archive"
@@ -305,7 +305,7 @@ function Convert-CoverageDataToJson
 
 # upload the logs
 function Send-CoverageData {
-	param ( 
+	param (
 		[Parameter(Mandatory=$true)][string[]]$jsonLog,
 		[Parameter(Mandatory=$true)][string]$commitId,
 		[Parameter(Mandatory=$true)][string]$Token,
