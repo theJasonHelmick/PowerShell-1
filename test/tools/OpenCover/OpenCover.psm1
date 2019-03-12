@@ -693,8 +693,16 @@ function Invoke-OpenCover
         $targetArgsUnelevated += @("-Show None")
     }
 
-    $cmdlineElevated = CreateOpenCoverCmdline -target $target -outputLog $OutputLog -targetArgs $targetArgsElevated
-    $cmdlineUnelevated = CreateOpenCoverCmdline -target $target -outputLog $OutputLog -targetArgs $targetArgsUnelevated
+    if ( $OutputLog -match "\*$" ) {
+        $elevatedLogName   = $OutputLog -replace "\*$",".elevated.xml"
+        $unelevatedLogName = $OutputLog -replace "\*$",".unelevated.xml"
+        $cmdlineElevated   = CreateOpenCoverCmdline -target $target -outputLog $elevatedLogName -targetArgs $targetArgsElevated
+        $cmdlineUnelevated = CreateOpenCoverCmdline -target $target -outputLog $unelevatedLogName -targetArgs $targetArgsUnelevated
+    }
+    else {
+        $cmdlineElevated   = CreateOpenCoverCmdline -target $target -outputLog $OutputLog -targetArgs $targetArgsElevated
+        $cmdlineUnelevated = CreateOpenCoverCmdline -target $target -outputLog $OutputLog -targetArgs $targetArgsUnelevated
+    }
 
     if ( $PSCmdlet.ShouldProcess("$OpenCoverBin $cmdlineUnelevated") )
     {
