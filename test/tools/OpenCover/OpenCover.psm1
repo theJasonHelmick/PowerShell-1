@@ -615,14 +615,14 @@ function Install-OpenCover
 .Description
    Invoke-OpenCover runs tests under OpenCover by executing tests on PowerShell located at $PowerShellExeDirectory.
 .EXAMPLE
-   Invoke-OpenCover -TestPath $pwd/test/powershell -PowerShellExeDirectory $pwd/src/powershell-win-core/bin/CodeCoverage/netcoreapp1.0/win7-x64
+   Invoke-OpenCover -TestBase $pwd/test -PowerShellExeDirectory $pwd/src/powershell-win-core/bin/CodeCoverage/netcoreapp1.0/win7-x64
 #>
 function Invoke-OpenCover
 {
     [CmdletBinding(SupportsShouldProcess=$true)]
     param (
         [parameter()]$OutputLog = "$home/Documents/OpenCover.xml",
-        [parameter()]$TestPath = "${script:psRepoPath}/test/powershell",
+        [parameter()]$TestBase = "${script:psRepoPath}/test",
         [parameter()]$OpenCoverPath = "$home/OpenCover",
         [parameter()]$PowerShellExeDirectory = "${script:psRepoPath}/src/powershell-win-core/bin/CodeCoverage/netcoreapp2.1/win7-x64/publish",
         [parameter()]$PesterLogElevated = "$HOME/Documents/TestResultsElevated.xml",
@@ -666,12 +666,12 @@ function Invoke-OpenCover
     # create the arguments for OpenCover
 
     $updatedEnvPath = "${PowerShellExeDirectory}\Modules;$TestToolsModulesPath"
-    $testToolsExePath = (Resolve-Path(Join-Path $TestPath -ChildPath "..\tools\TestExe\bin")).Path
-    $testServiceExePath = (Resolve-Path(Join-Path $TestPath -ChildPath "..\tools\TestService\bin")).Path
+    $testToolsExePath = (Resolve-Path(Join-Path $TestBase -ChildPath "tools\TestExe\bin")).Path
+    $testServiceExePath = (Resolve-Path(Join-Path $TestBase -ChildPath "tools\TestService\bin")).Path
     $updatedProcessEnvPath = "${testServiceExePath};${testToolsExePath};${env:PATH}"
 
     $startupArgs =  "Set-ExecutionPolicy Bypass -Force -Scope Process; `$env:PSModulePath = '${updatedEnvPath}'; `$env:Path = '${updatedProcessEnvPath}';"
-    $targetArgs = "${startupArgs}", "Invoke-Pester","${TestPath}","-OutputFormat $PesterLogFormat"
+    $targetArgs = "${startupArgs}", "Invoke-Pester","${TestBase}\powershell","-OutputFormat $PesterLogFormat"
 
     if ( $CIOnly )
     {

@@ -21,8 +21,8 @@ $ProgressPreference       = 'SilentlyContinue'
 $outputLogPattern         = "$BaseFolder\CodeCoverageOutput*"
 $elevatedLog              = "$BaseFolder\TestResults_Elevated.xml"
 $unelevatedLog            = "$BaseFolder\TestResults_Unelevated.xml"
-$testPath                 = "${BaseFolder}\tests"
-$testToolsPath            = "${testPath}\tools"
+$testBase                 = "${BaseFolder}\test"
+$testToolsPath            = "${testBase}\tools"
 $openCoverTargetDirectory = "$BaseFolder\OpenCoverToolset"
 $psBinPath                = "${BaseFolder}\CodeCoverage"
 
@@ -63,7 +63,7 @@ try {
             Write-LogPassThru -Message "STARTING TEST EXECUTION" -Banner
             $openCoverParams = @{
                 OutputLog = $outputLogPattern;
-                TestPath = $testPath;
+                TestBase = $testBase; # The base of the test directory <repo/test>
                 OpenCoverPath = "$openCoverTargetDirectory\OpenCover";
                 PowerShellExeDirectory = "$psBinPath";
                 PesterLogElevated = $elevatedLog;
@@ -87,11 +87,16 @@ try {
     # OpenCover will merge xml results which takes forever,
     # so we create a number of output logs and let CodeCov.io do the merging
     $logs = Get-LogFile -PathPattern $outputLogPattern
+    $logs | Foreach-Object { Write-LogPassThru -Message "Logfile: $_" }
+    $jsonLogs = $null
+    Convert-CoverageDataToJson -log $logs -jsonLog ([ref]$jsonLogs)
+    $jsonLogs | Foreach-Object { Write-LogPassThru -Message "JSON logfile: $_" }
+
     if ( $NoUpload ) {
         Write-LogPassThru -Message ("Not uploading {0} logs" -f @($logs).count)
     }
     else {
-        Send-CoverageData -Log $logs -CommitId $commitId -Token $codecovToken
+        Send-CoverageData -Log $jsonLogs -CommitId $commitId -Token $codecovToken
     }
 }
 catch

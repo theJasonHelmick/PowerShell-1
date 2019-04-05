@@ -50,7 +50,7 @@ function ConvertTo-CodeCovJson
     $progress=0
     foreach($f in $keys)
     {
-        Write-Progress -Id 1 -Activity "Converting to JSON" -Status 'Converting' -PercentComplete ($progress * 100 / $keys.Count)
+        Write-Progress -Id 1 -Activity "Converting to JSON" -Status "Converting '$Path'" -PercentComplete ($progress * 100 / $keys.Count)
         $fileCoverage = Get-SequencePointsForFile -fileId $f
         $fileName = $Script:fileTable[$f]
         $previousFileCoverage = $totalCoverage.coverage.${fileName}
@@ -81,55 +81,55 @@ function Write-LogPassThru
     Param(
         [Parameter(Mandatory=$true, ValueFromPipeline=$true, Position = 0, ParameterSetName="banner")]
         [string[]] $Message,
-		[Parameter(Mandatory=$false)][hashtable] $Data,
+        [Parameter(Mandatory=$false)][hashtable] $Data,
         [Parameter(Mandatory=$false)]$Path = "C:\tmp\CCLog.txt", # DO NOT CHECK IN "$env:Temp\CodeCoverageRunLogs.txt",
-		[Parameter()][switch]$HostOnly,
-		[Parameter(ParameterSetName="banner")][switch]$Banner
+        [Parameter()][switch]$HostOnly,
+        [Parameter(ParameterSetName="banner")][switch]$Banner
     )
 
     PROCESS {
-		if ( $banner ) {
-			$message | %{ $l = 0 } { if ( $l -lt $_.length ) { $l = $_.length } } { $l += 8 }
-			$message = $message | %{ "*" * $l } { "*** $_ ***" } { "*" * $l }
-		}
+        if ( $banner ) {
+            $message | %{ $l = 0 } { if ( $l -lt $_.length ) { $l = $_.length } } { $l += 8 }
+            $message = $message | %{ "*" * $l } { "*** $_ ***" } { "*" * $l }
+        }
         foreach ( $m in $Message ) {
             $formattedMessage = "{0:d} - {0:t} : {1}" -f ([datetime]::now), "$m"
-			if ( $HostOnly ) {
-				Write-Verbose -verbose $formattedMessage
-			}
-			else {
-				Add-Content -Path $Path -Value $formattedMessage -PassThru -Force
-			}
+            if ( $HostOnly ) {
+                Write-Verbose -verbose $formattedMessage
+            }
+            else {
+                Add-Content -Path $Path -Value $formattedMessage -PassThru -Force
+            }
         }
-		if ( $Data -ne $null ) {
-			$pad = $data.keys | %{ $l = 0 } { if ( $_.length -gt $l ) { $l = $_.length } } { $l }
-			foreach ( $key in $data.keys ) {
-				$fmtStr = "{0:d} - {0:t} : {1,-${pad}} = {2}"
-				$formattedMessage = $fmtStr -f ([datetime]::now), $key, $data.$key
-				if ( $HostOnly ) {
-					Write-Verbose -verbose $formattedMessage
-				}
-				else {
-					Add-Content -Path $Path -Value $formattedMessage -PassThru -Force
-				}
-			}
-		}
+        if ( $Data -ne $null ) {
+            $pad = $data.keys | %{ $l = 0 } { if ( $_.length -gt $l ) { $l = $_.length } } { $l }
+            foreach ( $key in $data.keys ) {
+                $fmtStr = "{0:d} - {0:t} : {1,-${pad}} = {2}"
+                $formattedMessage = $fmtStr -f ([datetime]::now), $key, $data.$key
+                if ( $HostOnly ) {
+                    Write-Verbose -verbose $formattedMessage
+                }
+                else {
+                    Add-Content -Path $Path -Value $formattedMessage -PassThru -Force
+                }
+            }
+        }
     }
 }
 
 function Copy-ToAzureDrive {
-	param ( [Parameter(Mandatory=$true,Position=0)][string]$location )
+    param ( [Parameter(Mandatory=$true,Position=0)][string]$location )
 
-	##Create yyyy-dd folder
-	$monthFolder = "{0:yyyy-MM}" -f [datetime]::Now
-	$monthFolderFullPath = New-Item -Path (Join-Path $azureLogDrive $monthFolder) -ItemType Directory -Force
-	$windowsFolderPath = New-Item (Join-Path $monthFolderFullPath "Windows") -ItemType Directory -Force
-	$destinationPath = Join-Path $env:Temp ("CodeCoverageLogs-{0:yyyy_MM_dd}-{0:hh_mm_ss}.zip" -f [datetime]::Now)
+    ##Create yyyy-dd folder
+    $monthFolder = "{0:yyyy-MM}" -f [datetime]::Now
+    $monthFolderFullPath = New-Item -Path (Join-Path $azureLogDrive $monthFolder) -ItemType Directory -Force
+    $windowsFolderPath = New-Item (Join-Path $monthFolderFullPath "Windows") -ItemType Directory -Force
+    $destinationPath = Join-Path $env:Temp ("CodeCoverageLogs-{0:yyyy_MM_dd}-{0:hh_mm_ss}.zip" -f [datetime]::Now)
 
-	Compress-Archive -Path $elevatedLogs,$unelevatedLogs,$outputLog -DestinationPath $destinationPath
-	Copy-Item $destinationPath $windowsFolderPath -Force -ErrorAction SilentlyContinue
+    Compress-Archive -Path $elevatedLogs,$unelevatedLogs,$outputLog -DestinationPath $destinationPath
+    Copy-Item $destinationPath $windowsFolderPath -Force -ErrorAction SilentlyContinue
 
-	Remove-Item -Path $destinationPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $destinationPath -Force -ErrorAction SilentlyContinue
 }
 
 function Send-CodeCovData
@@ -163,7 +163,7 @@ function Send-CodeCovData
 function Initialize-Environment
 {
 
-	param ( [string]$BaseFolder, [string]$OutputLog, [switch]$NoRun )
+    param ( [string]$BaseFolder, [string]$OutputLog, [switch]$NoRun )
     # START OF THE RUN
     Write-LogPassThru -Message "Initialize Environment" -Banner
 
@@ -210,54 +210,54 @@ function Receive-Package
     # download the files to $env:TEMP
     $artifactPath = "${env:TEMP}\ccBuild.${latestBuildId}.zip"
     Write-LogPassThru "downloading $CodeCoverageArtifactUrl to $artifactPath"
-	if ( (Test-Path $artifactPath) -and $NoClobber ) {
-		Write-LogPassThru "Using existing $artifactPath"
-	}
-	else {
-		try {
-			# Webclient.Downloadfile is about 26x faster than Invoke-WebRequest (13 vs 296 seconds)
-			# if there's a problem, we'll fall back to Invoke-WebRequest
-			$wc = [System.Net.Webclient]::new()
-			$wc.DownloadFile($CodeCoverageArtifactUrl, $artifactPath)
-		}
-		catch {
-			$response = Invoke-WebRequest -uri $CodeCoverageArtifactUrl -outFile $artifactPath
-		}
-	}
+    if ( (Test-Path $artifactPath) -and $NoClobber ) {
+        Write-LogPassThru "Using existing $artifactPath"
+    }
+    else {
+        try {
+            # Webclient.Downloadfile is about 26x faster than Invoke-WebRequest (13 vs 296 seconds)
+            # if there's a problem, we'll fall back to Invoke-WebRequest
+            $wc = [System.Net.Webclient]::new()
+            $wc.DownloadFile($CodeCoverageArtifactUrl, $artifactPath)
+        }
+        catch {
+            $response = Invoke-WebRequest -uri $CodeCoverageArtifactUrl -outFile $artifactPath
+        }
+    }
 
-	# no file, we can't continue
-	if ( ! (Test-Path $artifactPath)) {
-		throw "File download failed"
-	}
+    # no file, we can't continue
+    if ( ! (Test-Path $artifactPath)) {
+        throw "File download failed"
+    }
 
-	if ( $NoExpand ) {
-		return
-	}
+    if ( $NoExpand ) {
+        return
+    }
 
     # Extract the various zip files
     $stagingDir = "${env:TEMP}\ccBuild.${latestBuildId}"
     Write-LogPassThru "expanding $artifactPath files into $stagingDir"
     Expand-Archive -Path $artifactPath -DestinationPath $stagingDir -Force
 
-	# TODO: change test archive to the one that includes the assets and sources
+    # TODO: change test archive to the one that includes the assets and sources
     $archiveList = "OpenCover","CodeCoverage","TestPackage"
     foreach ( $archiveName in $archiveList ) {
         # it's a zip file, and the name of the downloaded zip archive is
-		# where the interior zip files are laid down
+        # where the interior zip files are laid down
         $archivePath = "${stagingDir}/CodeCoverage/${archiveName}.zip"
-		# the extraction of the TestPackage needs to be in the BaseFolder
-		if ( $archiveName -eq "TestPackage" ) {
-			$target = $BaseFolder
-		}
-		else {
-			$target = "${BaseFolder}/${archiveName}"
-		}
-		Write-LogPassThru -Message "expanding $archivePath into ${target}"
-		Expand-Archive -Path $archivePath -DestinationPath "${target}" -Force
-		if ( $archiveName -eq "CodeCoverage" ) {
-			# install Pester
-			Save-Module -Name Pester -RequiredVersion 4.4.4 -Path "${target}/Modules"
-		}
+        # the extraction of the TestPackage needs to be in the BaseFolder
+        if ( $archiveName -eq "TestPackage" ) {
+            $target = $BaseFolder
+        }
+        else {
+            $target = "${BaseFolder}/${archiveName}"
+        }
+        Write-LogPassThru -Message "expanding $archivePath into ${target}"
+        Expand-Archive -Path $archivePath -DestinationPath "${target}" -Force
+        if ( $archiveName -eq "CodeCoverage" ) {
+            # install Pester
+            Save-Module -Name Pester -RequiredVersion 4.4.4 -Path "${target}/Modules"
+        }
     }
 
     if ( ! $NoClobber ) {
@@ -270,89 +270,89 @@ function Receive-Package
             }
         }
     }
-	Write-LogPassThru -Message "Download and expansion complete"
+    Write-LogPassThru -Message "Download and expansion complete"
 }
 
 function Export-LogArchive
 {
-	param ( [Parameter(Mandatory=$true)][string[]]$log )
-	# only archive files that exist
-	$logpaths = $log | where-object { test-path $_ }
-	if ( ! $logPaths ) {
-		Write-LogPassThru -Message "No logs to archive"
-	}
-	else {
-		$DestinationArchive = "TestResults.{0:yyyyMMddhhmm}.zip" -f [datetime]::now
-		Write-LogPassThru -Message "Creating test archive $DestinationArchive"
-		Compress-Archive -DestinationPath $DestinationArchive -Path $logpaths -EA SilentlyContinue
-		# Remove-Item -Path $logpaths -EA SilentlyContinue
-	}
+    param ( [Parameter(Mandatory=$true)][string[]]$log )
+    # only archive files that exist
+    $logpaths = $log | where-object { test-path $_ }
+    if ( ! $logPaths ) {
+        Write-LogPassThru -Message "No logs to archive"
+    }
+    else {
+        $DestinationArchive = "TestResults.{0:yyyyMMddhhmm}.zip" -f [datetime]::now
+        Write-LogPassThru -Message "Creating test archive $DestinationArchive"
+        Compress-Archive -DestinationPath $DestinationArchive -Path $logpaths -EA SilentlyContinue
+        # Remove-Item -Path $logpaths -EA SilentlyContinue
+    }
 }
 
 function Convert-CoverageDataToJson
 {
-	param ( [Parameter(Mandatory=$true,Position=0)][string[]]$log, [ref]$jsonLog )
+    param ( [Parameter(Mandatory=$true,Position=0)][string[]]$log, [ref]$jsonLog )
 
-	$returnLogList = @()
-	foreach ( $logfile in $log ) {
-		$jsonLogfile = $logfile + ".json"
-		$returnLogList += $jsonLogfile
-		Write-LogPassThru -Message "Converting $logfile to $jsonLogfile"
-		$null = ConvertTo-CodeCovJson -Path $logfile -DestinationPath $jsonLogfile
-	}
-	$jsonLog.Value = $returnLogList
+    $returnLogList = @()
+    foreach ( $logfile in $log ) {
+        $jsonLogfile = $logfile + ".json"
+        $returnLogList += $jsonLogfile
+        Write-LogPassThru -Message "Converting $logfile to $jsonLogfile"
+        $null = ConvertTo-CodeCovJson -Path $logfile -DestinationPath $jsonLogfile
+    }
+    $jsonLog.Value = $returnLogList
 }
 
 # upload the logs
 function Send-CoverageData {
-	param (
-		[Parameter(Mandatory=$true)][string[]]$jsonLog,
-		[Parameter(Mandatory=$true)][string]$commitId,
-		[Parameter(Mandatory=$true)][string]$Token,
-		[Parameter()][switch]$NoUpload
-		)
+    param (
+        [Parameter(Mandatory=$true)][string[]]$jsonLog,
+        [Parameter(Mandatory=$true)][string]$commitId,
+        [Parameter(Mandatory=$true)][string]$Token,
+        [Parameter()][switch]$NoUpload
+        )
 
-	# get the commit message
+    # get the commit message
     # $commitInfo = Invoke-RestMethod -Method Get "https://api.github.com/repos/powershell/powershell/git/commits/$commitId"
     # $message = $commitInfo.message -replace "`n", " "
 
-	$logcount = 0
-	foreach ( $file in $jsonLog ) {
-		if ( $NoUpload ) {
-			Write-LogPassThru -Message "Not uploading $file"
-		}
-		else {
-			Write-LogPassThru -Message "Uploading $file to CodeCov"
-			try {
-				Send-CodeCovData -file $file -CommitID $commitId -token $Token -Branch 'master'
-				$logcount++
-			}
-			catch {
-				Write-LogPassThru "ERROR: Could not upload $file ($_)"
-			}
-			Write-LogPassThru -Message "Upload of $file complete."
-		}
-	}
-	Write-LogPassThru -Message ("{0} log files uploaded to codecov.io" -f $logCount)
+    $logcount = 0
+    foreach ( $file in $jsonLog ) {
+        if ( $NoUpload ) {
+            Write-LogPassThru -Message "Not uploading $file"
+        }
+        else {
+            Write-LogPassThru -Message "Uploading $file to CodeCov"
+            try {
+                Send-CodeCovData -file $file -CommitID $commitId -token $Token -Branch 'master'
+                $logcount++
+            }
+            catch {
+                Write-LogPassThru "ERROR: Could not upload $file ($_)"
+            }
+            Write-LogPassThru -Message "Upload of $file complete."
+        }
+    }
+    Write-LogPassThru -Message ("{0} log files uploaded to codecov.io" -f $logCount)
 }
 
 function Get-LogFile {
-	param (
-		[Parameter(Mandatory=$true)]$PathPattern
-		)
+    param (
+        [Parameter(Mandatory=$true)]$PathPattern
+        )
 
-	$logs = Get-ChildItem -Path ${PathPattern} -ErrorAction SilentlyContinue
-	return $logs.FullName
+    $logs = Get-ChildItem -Path ${PathPattern} -ErrorAction SilentlyContinue
+    return $logs.FullName
 }
 
 function Get-CommitId {
-	param ([Parameter(Mandatory=$true)]$psexe)
+    param ([Parameter(Mandatory=$true)]$psexe)
 
-	# grab the commitID, we need this to grab the right sources
-	$assemblyLocation = & "$psexe" -noprofile -command { Get-Item ([psobject].Assembly.Location) }
-	$productVersion = $assemblyLocation.VersionInfo.productVersion
-	$commitId = $productVersion.split(" ")[-1]
-	Write-LogPassThru -Message "Using GitCommitId: $commitId"
-	return $commitId
+    # grab the commitID, we need this to grab the right sources
+    $assemblyLocation = & "$psexe" -noprofile -command { Get-Item ([psobject].Assembly.Location) }
+    $productVersion = $assemblyLocation.VersionInfo.productVersion
+    $commitId = $productVersion.split(" ")[-1]
+    Write-LogPassThru -Message "Using GitCommitId: $commitId"
+    return $commitId
 }
 
