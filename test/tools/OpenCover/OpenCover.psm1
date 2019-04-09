@@ -668,10 +668,11 @@ function Invoke-OpenCover
     $updatedEnvPath = "${PowerShellExeDirectory}\Modules;$TestToolsModulesPath"
     $testToolsExePath = (Resolve-Path(Join-Path $TestBase -ChildPath "tools\TestExe\bin")).Path
     $testServiceExePath = (Resolve-Path(Join-Path $TestBase -ChildPath "tools\TestService\bin")).Path
-    $updatedProcessEnvPath = "${testServiceExePath};${testToolsExePath};${env:PATH}"
+    $WebServiceExePath = (Resolve-Path(Join-Path $TestBase -ChildPath "tools\WebListener\bin")).Path
+    $updatedProcessEnvPath = "${PowerShellExeDirectory};${testServiceExePath};${testToolsExePath};${WebServiceExePath};${env:PATH}"
 
     $startupArgs =  "Set-ExecutionPolicy Bypass -Force -Scope Process; `$env:PSModulePath = '${updatedEnvPath}'; `$env:Path = '${updatedProcessEnvPath}';"
-    $targetArgs = "${startupArgs}", "Invoke-Pester","${TestBase}\powershell","-OutputFormat $PesterLogFormat"
+    $targetArgs = "${startupArgs}", "Invoke-Pester","${TestBase}/powershell","-OutputFormat $PesterLogFormat"
 
     if ( $CIOnly )
     {
@@ -690,7 +691,7 @@ function Invoke-OpenCover
     if(-not $SuppressQuiet)
     {
         $targetArgsElevated += @("-Show None")
-        $targetArgsUnelevated += @("-Show None")
+        $targetArgsUnelevated += @("-Show All")
     }
 
     if ( $OutputLog -match "\*$" ) {
@@ -718,7 +719,8 @@ function Invoke-OpenCover
             # invoke OpenCover unelevated and poll for completion
             $unelevatedFile = "$env:temp\unelevated.ps1"
             "$openCoverBin $cmdlineUnelevated" | Out-File -FilePath $unelevatedFile -Force
-            runas.exe /trustlevel:0x20000 "powershell.exe -file $unelevatedFile"
+            $unelevatedLog = "${env:TEMP}\unelevated-{0}.log" -f [guid]::newguid().toString()
+            runas.exe /trustlevel:0x20000 "cmd.exe /c \""powershell.exe -file $unelevatedFile\"" 2>&1 > ${unelevatedLog}"
             # poll for process exit every 60 seconds
             # timeout of 12 hours
             # Runs currently take about 8-9 hours, we picked 12 hours to be substantially larger.
@@ -746,8 +748,9 @@ function Invoke-OpenCover
         }
         finally
         {
-            Remove-Item $elevatedFile -force -ErrorAction SilentlyContinue
-            Remove-Item $unelevatedFile -force -ErrorAction SilentlyContinue
+            # DEBUG
+            #Remove-Item $elevatedFile -force -ErrorAction SilentlyContinue
+            #Remove-Item $unelevatedFile -force -ErrorAction SilentlyContinue
         }
     }
 }

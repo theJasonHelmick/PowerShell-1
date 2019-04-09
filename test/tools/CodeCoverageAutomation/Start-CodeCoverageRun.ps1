@@ -7,6 +7,7 @@ param(
     [Parameter(Mandatory = $true, Position = 0)] $codecovToken,
     [Parameter(Position = 2)] $azureLogDrive = "L:\",
     [Parameter()][String]$BaseFolder = "${env:Temp}\CC",
+    [Parameter()]$BuildId = "latest",
     [switch] $SuppressQuiet,
     [switch] $Norun,
     [switch] $NoUpload
@@ -37,7 +38,7 @@ try {
     Export-LogArchive -log $elevatedLog,$unelevatedLog,outputLogPattern
 
     # get the artifact that contains all the files we need
-    Receive-Package -BaseFolder $BaseFolder
+    Receive-Package -BaseFolder $BaseFolder -BuildId $buildId
 
 
     Write-LogPassThru -Message "Install and import OpenCover module"
@@ -96,7 +97,7 @@ try {
         Write-LogPassThru -Message ("Not uploading {0} logs" -f @($logs).count)
     }
     else {
-        Send-CoverageData -Log $jsonLogs -CommitId $commitId -Token $codecovToken
+        Send-CoverageData -jsonLog $jsonLogs -CommitId $commitId -Token $codecovToken
     }
 }
 catch

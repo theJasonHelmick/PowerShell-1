@@ -1,79 +1,35 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
-# Read the XML and create a dictionary for FileUID -> file full path.
-function Get-FileTable()
-{
-    $files = $script:covData | Select-Xml './/File'
-    foreach($file in $files)
-    {
-        $script:fileTable[$file.Node.uid] = $file.Node.fullPath
-    }
-}
-
-# Get sequence points for a particular file
-function Get-SequencePointsForFile([string] $fileId)
-{
-    $lineCoverage = [System.Collections.Generic.Dictionary[string,int]]::new()
-
-    $sequencePoints = $script:covData | Select-Xml ".//SequencePoint[@fileid = '$fileId']"
-
-    if($sequencePoints.Count -gt 0)
-    {
-        foreach($sp in $sequencePoints)
-        {
-            $visitedCount = [int]::Parse($sp.Node.vc)
-            $lineNumber = [int]::Parse($sp.Node.sl)
-            $lineCoverage[$lineNumber] += [int]::Parse($visitedCount)
-        }
-
-        return $lineCoverage
-    }
-}
-
 #### Convert the OpenCover XML output for CodeCov.io JSON format as it is smaller.
 function ConvertTo-CodeCovJson
 {
-    param(
-        [string] $Path,
-        [string] $DestinationPath
-    )
+    param( [string] $Path, [string] $DestinationPath )
 
-    $Script:fileTable = [ordered]@{}
-    $Script:covData = [xml] (Get-Content -ReadCount 0 -Raw -Path $Path)
-    $totalCoverage = [PSCustomObject]::new()
-    $totalCoverage | Add-Member -MemberType NoteProperty -Name "coverage" -Value ([PSCustomObject]::new())
-
-    ## Populate the dictionary with file uid and file names.
-    Get-FileTable
-    $keys = $Script:fileTable.Keys
-    $progress=0
-    foreach($f in $keys)
-    {
-        Write-Progress -Id 1 -Activity "Converting to JSON" -Status "Converting '$Path'" -PercentComplete ($progress * 100 / $keys.Count)
-        $fileCoverage = Get-SequencePointsForFile -fileId $f
-        $fileName = $Script:fileTable[$f]
-        $previousFileCoverage = $totalCoverage.coverage.${fileName}
-
-        ##Update the values for the lines in the file.
-        if($null -ne $previousFileCoverage)
-        {
-            foreach($lineNumber in $fileCoverage.Keys)
-            {
-                $previousFileCoverage[$lineNumber] += [int]::Parse($fileCoverage[$lineNumber])
-            }
-        }
-        else ## the file is new, so add the values as a new NoteProperty.
-        {
-            $totalCoverage.coverage | Add-Member -MemberType NoteProperty -Value $fileCoverage -Name $fileName
-        }
-
-        $progress++
-    }
-
-    Write-Progress -Id 1 -Completed -Activity "Converting to JSON"
-
-    $totalCoverage | ConvertTo-Json -Depth 5 -Compress | Out-File $DestinationPath -Encoding ascii
+    Write-LogPassThru -Message "Reading '$Path'"
+    [xml]$x = Get-Content -read 0 -raw $Path
+    # create a hashtable for fileid -> path look up
+    $files = $x.SelectNodes(".//File")|%{$h = @{}}{$h[$_.uid] = $_.fullPath}{$h}
+    # grab all the sequence points
+    $sp = $x.SelectNodes(".//SequencePoint")
+    # setup the hashtable for codecov.io
+    Write-LogPassThru -Message "Converting to Json '$DestinationPath'"
+    $coveragehash = @{ coverage = [ordered]@{} }
+    # iterate over the data
+    $sp.Foreach({ 
+      # look up the file name, as that's what we need
+      $n = $files[$_.fileid]
+      if ( $coveragehash.coverage.contains($n) ) {
+        $coveragehash.coverage[$n][$_.sl] += [int]($_.vc)
+      }
+      else {
+        $coveragehash.coverage[$n] = [ordered]@{ $_.sl = [int]($_.vc) }
+      }
+    })
+    # convert the hashtable
+    $coveragehash | 
+      ConvertTo-Json -depth 5 -compress |
+      Out-File -encoding ascii $DestinationPath
 }
 
 function Write-LogPassThru
@@ -88,6 +44,10 @@ function Write-LogPassThru
     )
 
     PROCESS {
+        if ( $message -match "An System.IO.DirectoryNotFoundException occured: Could not find a part of the path" ) {
+            return
+        }
+
         if ( $banner ) {
             $message | %{ $l = 0 } { if ( $l -lt $_.length ) { $l = $_.length } } { $l += 8 }
             $message = $message | %{ "*" * $l } { "*** $_ ***" } { "*" * $l }
@@ -198,15 +158,29 @@ function Initialize-Environment
 #
 function Receive-Package
 {
-    param ( [Parameter(Mandatory=$true,Position=0)]$BaseFolder, [switch]$NoExpand, [switch]$NoClobber )
+    param ( 
+	[Parameter(Mandatory=$true,Position=0)]$BaseFolder,
+        [Parameter()]$BuildId = "latest",
+        [switch]$NoExpand,
+        [switch]$NoClobber
+        )
 
     Write-LogPassThru -Message "Starting downloads.","Retrieving artifact url"
-    $dailyBuildInfo = Invoke-RestMethod "https://dev.azure.com/powershell/powershell/_apis/build/builds?definitions=32"
-    $latestWindowsDaily = $dailyBuildInfo.Value | Select-Object -First 1
-    $latestBuildId = $latestWindowsDaily.Id
+    if ( $BuildId -eq "latest" ) {
+        $dailyBuildInfo = Invoke-RestMethod "https://dev.azure.com/powershell/powershell/_apis/build/builds?definitions=32"
+        $latestWindowsDaily = $dailyBuildInfo.Value | Select-Object -First 1
+        $latestBuildId = $latestWindowsDaily.Id
+    }
+    else {
+        $latestBuildId = $BuildId
+    }
     $artifactUrl = "https://dev.azure.com/powershell/powershell/_apis/build/builds/$latestBuildId/artifacts?artifactName=CodeCoverage"
-    $CodeCoverageArtifactUrl = (Invoke-RestMethod $artifactUrl).Resource.downloadUrl
-
+    try {
+        $CodeCoverageArtifactUrl = (Invoke-RestMethod $artifactUrl).Resource.downloadUrl
+    }
+    catch {
+        throw "Artifact download failure"
+    }
     # download the files to $env:TEMP
     $artifactPath = "${env:TEMP}\ccBuild.${latestBuildId}.zip"
     Write-LogPassThru "downloading $CodeCoverageArtifactUrl to $artifactPath"
@@ -253,6 +227,10 @@ function Receive-Package
             $target = "${BaseFolder}/${archiveName}"
         }
         Write-LogPassThru -Message "expanding $archivePath into ${target}"
+        if ( ! (test-path $archivePath) ) {
+            throw "$archivePath not found, check $artifactPath for proper contents"
+        }
+
         Expand-Archive -Path $archivePath -DestinationPath "${target}" -Force
         if ( $archiveName -eq "CodeCoverage" ) {
             # install Pester
@@ -352,7 +330,6 @@ function Get-CommitId {
     $assemblyLocation = & "$psexe" -noprofile -command { Get-Item ([psobject].Assembly.Location) }
     $productVersion = $assemblyLocation.VersionInfo.productVersion
     $commitId = $productVersion.split(" ")[-1]
-    Write-LogPassThru -Message "Using GitCommitId: $commitId"
     return $commitId
 }
 
