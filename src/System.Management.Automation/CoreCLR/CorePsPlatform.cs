@@ -5,9 +5,11 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 
 using Microsoft.Win32;
 using Microsoft.Win32.SafeHandles;
+using System.Linq;
 
 namespace System.Management.Automation
 {
@@ -16,6 +18,77 @@ namespace System.Management.Automation
     /// </summary>
     public static class Platform
     {
+
+        /// <summary>
+        /// Resource enum for Linux
+        /// </summary>
+        public enum ResourceForUlimit
+        {
+            /// <summary> cpu time per process </summary>
+            CpuTime               = 0,
+            /// <summary> file size </summary>
+            FileSize              = 1,
+            /// <summary> data segment size </summary>
+            DataSegmentSize       = 2,
+            /// <summary> stack size </summary>
+            StackSize             = 3,
+            /// <summary> core file size </summary>
+            CoreFileSize          = 4,
+            /// <summary> address space (resident set size) </summary>
+            AddresSpaceSize       = 5,
+#if LUNUX_ULIMIT
+            /// <summary> number of processes </summary>
+            NumberOfProcesses     = 6,
+            /// <summary> number of open files </summary>
+            NumberOfOpenFiles     = 7,
+            /// <summary> locked-in-memory address space </summary>
+            LockedMemory          = 8,
+            /// <summary> address space limit </summary>
+            MaximumAddressSpace   = 9,
+            /// <summary>Maximum file lock</summary>
+            FileLock              = 10,
+            /// <summary>Maximum number of pending signals</summary>
+            MaximumPendingSignals = 11,
+            /// <summary>Maximum POSIX message queue size in bytes</summary>
+            MessageQueueSize      = 12,
+            /// <summary>Maximum nice priority allowed </summary>
+            MaximumNice           = 13,
+            /// <summary>Maximum real-time priority</summary>
+            RealTimePriority      = 14,
+            /// <summary>
+            /// Maximum CPU time in µs that a process scheduled under a real-time
+            /// scheduling policy may consume without making a blocking system
+            /// call before being forcibly descheduled.
+            /// </summary>
+            RealTimeCpu           = 15,
+#elif MACOS_ULIMIT
+            /// <summary> locked in memory space</summary>
+            LockedMemory          = 6,
+            /// <summary> number of processes </summary>
+            NumberOfProcesses     = 7,
+            /// <summary> number of open files </summary>
+            NumberOfOpenFiles     = 8,
+#endif
+        }
+        /// <summary>
+        /// Resource information
+        /// </summary>
+        public class ResourceLimitInfo
+        {
+            /// <summary>
+            /// The command used to retrieve the value of the resource
+            /// </summary>
+            public ResourceForUlimit Resource;
+            /// <summary>
+            /// the current limit
+            /// </summary>
+            public ulong Current;
+            /// <summary>
+            /// the maximum limit
+            /// </summary>
+            public ulong Maximum;
+        }
+
         private static string _tempDirectory = null;
 
         /// <summary>
@@ -48,6 +121,14 @@ namespace System.Management.Automation
             get
             {
                 return RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+            }
+        }
+
+        /// <summary>get the size of a pipe buffer</summary>
+        public static int PipeSize
+        {
+            get {
+                return Unix.GetPipeBufSize();
             }
         }
 
@@ -137,6 +218,45 @@ namespace System.Management.Automation
                 _isWindowsDesktop = !IsNanoServer && !IsIoT;
                 return _isWindowsDesktop.Value;
 #endif
+            }
+        }
+
+#if UNIX
+        /// <summary>
+        /// Return the umask value
+        /// </summary>
+        public static ushort Umask
+        {
+            get
+            {
+                return Unix.GetUmask();
+            }
+            set
+            {
+                Unix.SetUmask(value);
+            }
+        }
+#endif
+
+        /// <summary>
+        /// Get the current resource limits for Mac
+        /// </summary>
+        public static ResourceLimitInfo GetResourceLimit(ResourceForUlimit command)
+        {
+            Unix.NativeMethods.rlimit r;
+            Unix.NativeMethods.getrlimit((int)command, out r);
+            ResourceLimitInfo rli = Unix.NativeMethods.rlimitToResourceLimitInfo((int)command, r);
+            return rli;
+        }
+        /// <summary>
+        /// Get the current resource limits for Mac
+        /// </summary>
+        public static void SetResourceLimit(Platform.ResourceLimitInfo rli)
+        {
+            Unix.NativeMethods.rlimit r = Unix.NativeMethods.ResourceLimitInfoTorlimit(rli);
+            long result = Unix.NativeMethods.setrlimit((int)rli.Resource, out r);
+            if ( result != 0 ) {
+                throw new Win32Exception(Marshal.GetLastWin32Error());
             }
         }
 
@@ -568,6 +688,23 @@ namespace System.Management.Automation
                 return false;
             }
 
+            public static ushort GetUmask()
+            {
+                ushort mask = Unix.NativeMethods.umask(0);
+                Unix.NativeMethods.umask(mask);
+                return mask;
+            }
+
+            public static int GetPipeBufSize()
+            {
+                return (int)Unix.NativeMethods.PIPE_BUF();
+            }
+
+            public static ushort SetUmask(ushort mask)
+            {
+                return Unix.NativeMethods.umask(mask);
+            }
+
             public static bool IsHardLink(FileSystemInfo fs)
             {
                 if (!fs.Exists || (fs.Attributes & FileAttributes.Directory) == FileAttributes.Directory)
@@ -667,6 +804,23 @@ namespace System.Management.Automation
                     return tm;
                 }
 
+                internal static rlimit ResourceLimitInfoTorlimit(ResourceLimitInfo rli)
+                {
+                    rlimit rl;
+                    rl.rlim_cur = rli.Current;
+                    rl.rlim_max = rli.Maximum;
+                    return rl;
+                }
+
+                internal static unsafe ResourceLimitInfo rlimitToResourceLimitInfo(int command, rlimit rl)
+                {
+                    ResourceLimitInfo rli = new ResourceLimitInfo();
+                    rli.Current = rl.rlim_cur;
+                    rli.Maximum = rl.rlim_max;
+                    rli.Resource = (ResourceForUlimit)command;
+                    return rli;
+                }
+
                 [DllImport(psLib, CharSet = CharSet.Ansi, SetLastError = true)]
                 internal static extern unsafe int SetDate(UnixTm* tm);
 
@@ -694,7 +848,237 @@ namespace System.Management.Automation
                 [DllImport(psLib, CharSet = CharSet.Ansi, SetLastError = true)]
                 internal static extern int GetInodeData([MarshalAs(UnmanagedType.LPStr)]string path,
                                                         out UInt64 device, out UInt64 inode);
+
+                [StructLayout(LayoutKind.Sequential)]
+                internal unsafe struct rlimit
+                {
+#if LINUX32BIT
+                    public uint rlim_cur;
+                    public uint rlim_max;
+#else
+                    public ulong rlim_cur;
+                    public ulong rlim_max;
+#endif
+                }
+
+                [DllImport("libc", CharSet = CharSet.Ansi, SetLastError = true)]
+                internal static extern long setrlimit(int command, out rlimit limit);
+                [DllImport("libc", CharSet = CharSet.Ansi, SetLastError = true)]
+                internal static extern long getrlimit(int command, out rlimit limit);
+
+                [DllImport("libc", CharSet = CharSet.Ansi, SetLastError = true)]
+                internal static extern ushort umask (ushort mask);
+
+                [DllImport("libc", CallingConvention = CallingConvention.Cdecl)]
+                [return: MarshalAs(UnmanagedType.SysInt)]
+                internal extern static IntPtr PIPE_BUF();
             }
         }
     }
+
+#if UNIX
+    /// <summary>a umask object with the 3 different presentations</summary>
+    public class UmaskInfo
+    {
+        /// <summary>The traditional view</summary>
+        public string Umask;
+        /// <summary>The symbolic view</summary>
+        public string Symbolic;
+        /// <summary>As a decimal number</summary>
+        public ushort AsDecimal;
+        /// <summary>provide the default view</summary>
+        public override string ToString()
+        {
+            return Umask;
+        }
+
+        /// <summary>constructor</summary>
+        public UmaskInfo(ushort value)
+        {
+            string s = Convert.ToString(value, 8).PadLeft(4,'0');
+            AsDecimal = value;
+            Umask = s;
+            Symbolic = ConvertToSymbolic(s);
+        }
+        private string ConvertToSymbolic(string s)
+        {
+            StringBuilder sb = new StringBuilder();
+            char[] perms = s.ToCharArray();
+            string[] permissions = new string[]{ "rwx", "rw", "rx", "r", "wx", "w", "x", "" };
+            sb.Append("u=");
+            int permVal = int.Parse(perms[1].ToString());
+            sb.Append(permissions[permVal]);
+            sb.Append(",g=");
+            permVal = int.Parse(perms[2].ToString());
+            sb.Append(permissions[permVal]);
+            sb.Append(",o=");
+            permVal = int.Parse(perms[3].ToString());
+            sb.Append(permissions[permVal]);
+            return sb.ToString();
+        }
+    }
+
+    /// <summary>the Get-Umask cmdlet</summary>
+    [Cmdlet("Get","Umask")]
+    public class GetUmaskCommand : PSCmdlet
+    {
+        /// <summary>Emit the umask object</summary>
+        protected override void EndProcessing()
+        {
+            var umask = Platform.Umask;
+            WriteObject(new UmaskInfo(umask));
+        }
+    }
+
+    /// <summary>the Get-Umask cmdlet</summary>
+    [Cmdlet("Set","Umask", DefaultParameterSetName="Octal")]
+    public class SetUmaskCommand : PSCmdlet
+    {
+
+        private readonly string SymbolicUsage = "no";
+        private string[] _symbolic;
+        /// <summary>Symbolic umask</summary>
+        [Parameter(Mandatory=true,ParameterSetName="Symbolic")]
+        [ValidateCount(1,3)]
+        public string[] Symbolic {
+            get { return _symbolic; }
+            set {
+                // Validate assignment here
+                foreach ( string symbol in value ) {
+                    if ( symbol.Length < 2 ) { throw new ArgumentException(SymbolicUsage); }
+                    if ( ! ( symbol[0] == 'u' || symbol[0] == 'o' || symbol[0] == 'g')) { throw new ArgumentException(SymbolicUsage); }
+                    if ( symbol[1] != '=' ) { throw new ArgumentException(SymbolicUsage); }
+                    foreach ( char c in symbol.Substring(2).ToCharArray()) {
+                        if ( ! (c == 'r' || c == 'w' || c == 'x') ) { throw new ArgumentException(SymbolicUsage); }
+                    }
+                }
+                _symbolic = value;
+            }
+        }
+
+        /// <summary>traditional umask view</summary>
+        [Parameter(Mandatory=true,Position=0,ParameterSetName="Octal")]
+        [ValidateLength(1,4)]
+        [ValidatePattern("^[0-7]{1,4}$")]
+        public string Umask { get; set; }
+        /// <summary>Set the umask</summary>
+        protected override void EndProcessing()
+        {
+            try {
+                if ( String.Compare(this.ParameterSetName, "Symbolic") == 0 ) {
+                    Umask = ConvertSymbolicUmaskToOctalUmask(Symbolic);
+                }
+                int umaskValue = Convert.ToInt16(Umask, 8);
+                Platform.Umask = (ushort)umaskValue;
+            }
+            catch (Exception e) {
+                ThrowTerminatingError(new ErrorRecord(e, "SetUmaskError", ErrorCategory.InvalidArgument, Umask));
+            }
+        }
+
+        private string ConvertSymbolicUmaskToOctalUmask(string[]SymbolicUmask) {
+            char []umask = new UmaskInfo(Platform.Umask).Umask.ToCharArray();
+            int offset = 0;
+            foreach ( string sUmask in SymbolicUmask ) {
+                if (sUmask[0] == 'u' ) {
+                    offset = 1;
+                }
+                else if ( sUmask[0] == 'g' ) {
+                    offset = 2;
+                }
+                else if ( sUmask[0] == 'o' ) {
+                    offset = 3;
+                }
+                byte val = 0;
+                foreach ( char p in sUmask.Substring(2).ToCharArray()) {
+                    switch (p) {
+                        case 'r': val |= 4; break;
+                        case 'w': val |= 2; break;
+                        case 'x': val |= 1; break;
+                        default: break;
+                    }
+                }
+                int v = 7 - val;
+                umask[offset] = Convert.ToChar(v.ToString());
+            }
+            return String.Join(null, umask);
+        }
+    }
+
+    /// <summary>The Set-Ulimit cmdlet</summary>
+    [Cmdlet("Set","Ulimit")]
+    public class SetUlimitCommand : PSCmdlet
+    {
+        /// <summary>The resource to retrieve</summary>
+        [Parameter(Position=0,Mandatory=true,ValueFromPipeline=true,ParameterSetName="ResourceInfo")]
+        public Platform.ResourceLimitInfo ResourceInfo { get; set; }
+        /// <summary>new setting</summary>
+        [Parameter(Mandatory=true,ParameterSetName="Resource")]
+        public Platform.ResourceForUlimit Resource { get; set; }
+
+#if LINUX32BIT
+        /// <summary>new 32bit value for current </summary>
+        [Parameter(ParameterSetName="Resource")]
+        public uint Current { get; set; }
+        /// <summary>new 32bit value for maximum </summary>
+        [Parameter(ParameterSetName="Resource")]
+        public uint Maximum { get; set; }
+#else
+        /// <summary>new 64bit value for current </summary>
+        [Parameter(ParameterSetName="Resource")]
+        public ulong Current { get; set; }
+        /// <summary>new 64bit value for maximum </summary>
+        [Parameter(ParameterSetName="Resource")]
+        public ulong Maximum { get; set; }
+#endif
+
+        /// <summary>Retrieve and return the resource value</summary>
+        protected override void EndProcessing()
+        {
+            if ( ParameterSetName == "Resource" ) {
+                Platform.ResourceLimitInfo rli = Platform.GetResourceLimit(Resource);
+                ResourceInfo = new Platform.ResourceLimitInfo() {
+                    Resource = Resource,
+                    Current = Current != 0 ? Current : rli.Current,
+                    Maximum = Maximum != 0 ? Maximum : rli.Maximum,
+                };
+            }
+            try {
+                Platform.SetResourceLimit(ResourceInfo);
+            }
+            catch (Exception e) {
+                WriteError(new ErrorRecord(e, "Set-Ulimit", ErrorCategory.InvalidArgument, Resource));
+            }
+        }
+    }
+
+    /// <summary>The Get-Ulimit cmdlet</summary>
+    [Cmdlet("Get","Ulimit",DefaultParameterSetName="Resource")]
+    public class GetUlimitCommand : PSCmdlet
+    {
+        /// <summary>The resource to retrieve</summary>
+        [Parameter(Position=0,Mandatory=true,ParameterSetName="All")]
+        public SwitchParameter All { get; set; }
+
+        /// <summary>The resource to retrieve</summary>
+        [Parameter(Position=0,ParameterSetName="Resource")]
+        public Platform.ResourceForUlimit[] Resource { get; set; } = { Platform.ResourceForUlimit.FileSize };
+
+        /// <summary>Retrieve and return the resource value</summary>
+        protected override void BeginProcessing()
+        {
+            if ( this.ParameterSetName == "All" ) {
+                Resource = (Platform.ResourceForUlimit[])Enum.GetValues(typeof(Platform.ResourceForUlimit));
+            }
+        }
+        /// <summary>Retrieve and return the resource value</summary>
+        protected override void EndProcessing()
+        {
+            foreach ( Platform.ResourceForUlimit command in Resource) {
+                WriteObject(Platform.GetResourceLimit(command));
+            }
+        }
+    }
+
+#endif
 }

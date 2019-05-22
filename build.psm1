@@ -335,6 +335,17 @@ Fix steps:
         $Arguments += "/property:IsWindows=false"
     }
 
+    if ($Options.Runtime -eq "linux-arm" ) {
+        $Arguments += "/property:linux-arm=true"
+    }
+
+    if ( $Options.Runtime -match "alpine-x64|linux-arm64|linux-x64" ) {
+        $Arguments += "/property:LINUX_ULIMIT=true"
+    }
+    elseif ( $Options.Runtime -eq "osx-x64" ) {
+        $Arguments += "/property:MACOS_ULIMIT=true"
+    }
+
     $Arguments += "--configuration", $Options.Configuration
     $Arguments += "--framework", $Options.Framework
 

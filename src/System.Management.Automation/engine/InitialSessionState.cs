@@ -5284,6 +5284,12 @@ end {
                 // Not exported, but are added via reflection so added here as well, though maybe they shouldn't be
                 { "Out-LineOutput",                    new SessionStateCmdletEntry("Out-LineOutput", typeof(OutLineOutputCommand), helpFile) },
                 { "Format-Default",                    new SessionStateCmdletEntry("Format-Default", typeof(FormatDefaultCommand), helpFile) },
+#if UNIX
+                { "Get-Umask",                         new SessionStateCmdletEntry("Get-Umask", typeof(GetUmaskCommand), helpFile) },
+                { "Set-Umask",                         new SessionStateCmdletEntry("Set-Umask", typeof(SetUmaskCommand), helpFile) },
+                { "Get-Ulimit",                        new SessionStateCmdletEntry("Get-Ulimit", typeof(GetUlimitCommand), helpFile) },
+                { "Set-Ulimit",                        new SessionStateCmdletEntry("Set-Ulimit", typeof(SetUlimitCommand), helpFile) },
+#endif
             };
             foreach (var val in cmdlets.Values)
             {

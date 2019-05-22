@@ -120,6 +120,21 @@
     <DefineConstants>$(DefineConstants);UNIX</DefineConstants>
   </PropertyGroup>
 
+  <!-- Define whether we're on a 32bit Linux OS -->
+  <PropertyGroup Condition=" '$(linux-arm)' == 'true' ">
+    <DefineConstants>$(DefineConstants);LINUX32BIT</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Define whether we're on a 64bit Linux OS -->
+  <PropertyGroup Condition=" '$(LINUX_ULIMIT)' == 'true' ">
+    <DefineConstants>$(DefineConstants);LINUX_ULIMIT</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Define whether we're on MacOS -->
+  <PropertyGroup Condition=" '$(MACOS_ULIMIT)' == 'true' ">
+    <DefineConstants>$(DefineConstants);MACOS_ULIMIT</DefineConstants>
+  </PropertyGroup>
+
   <!-- Define all OS, debug configuration properties -->
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugType>portable</DebugType>
