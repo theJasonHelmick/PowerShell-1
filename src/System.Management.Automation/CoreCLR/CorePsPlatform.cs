@@ -563,6 +563,29 @@ namespace System.Management.Automation
         // to a PAL value and calls strerror_r underneath to generate the message.
         internal static class Unix
         {
+            public class CommonStat
+            {
+                public long Inode;
+                public int Mode;
+                public int UserId;
+                public int GroupId;
+                public int HardlinkCount;
+                public long Size;
+                public long AccessTime;
+                public long ModifiedTime;
+                public long CreationTime;
+                public long BlockSize;
+                public int DeviceId;
+                public int NumberOfBlocks;
+                public int IsDirectory;
+                public int IsFile;
+                public int IsSymbolicLink;
+                public int IsBlockDevice;
+                public int IsCharacterDevice;
+                public int IsNamedPipe;
+                public int IsSocket;
+            }
+
             // This is a helper that attempts to map errno into a PowerShell ErrorCategory
             internal static ErrorCategory GetErrorCategory(int errno)
             {
@@ -593,6 +616,35 @@ namespace System.Management.Automation
                 {
                     throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
+            }
+
+            public static CommonStat GetStat(string path)
+            {
+                NativeMethods.CommonStatStruct css;
+                if ( NativeMethods.GetCommonStat(path, out css) == 0 ) {
+                    CommonStat cs = new CommonStat();
+                    cs.Inode = css.Inode;
+                    cs.Mode = css.Mode;
+                    cs.UserId = css.UserId;
+                    cs.GroupId = css.GroupId;
+                    cs.HardlinkCount = css.HardlinkCount;
+                    cs.Size = css.Size;
+                    cs.AccessTime = css.AccessTime;
+                    cs.ModifiedTime = css.ModifiedTime;
+                    cs.CreationTime = css.CreationTime;
+                    cs.BlockSize = css.BlockSize;
+                    cs.DeviceId = css.DeviceId;
+                    cs.NumberOfBlocks = css.NumberOfBlocks;
+                    cs.IsDirectory = css.IsDirectory;
+                    cs.IsFile = css.IsFile;
+                    cs.IsSymbolicLink = css.IsSymbolicLink;
+                    cs.IsBlockDevice = css.IsBlockDevice;
+                    cs.IsCharacterDevice = css.IsCharacterDevice;
+                    cs.IsNamedPipe = css.IsNamedPipe;
+                    cs.IsSocket = css.IsSocket;
+                    return cs;
+                }
+                throw new InvalidOperationException("GetStat");
             }
 
             public static int GetProcFSParentPid(int pid)
@@ -701,6 +753,36 @@ namespace System.Management.Automation
                 [DllImport(psLib, CharSet = CharSet.Ansi, SetLastError = true)]
                 internal static extern int GetInodeData([MarshalAs(UnmanagedType.LPStr)]string path,
                                                         out UInt64 device, out UInt64 inode);
+
+
+                // This is a struct from <getcommonstat.h>
+                [StructLayout(LayoutKind.Sequential)]
+                internal unsafe struct CommonStatStruct
+                {
+                    internal long Inode;
+                    internal int Mode;
+                    internal int UserId;
+                    internal int GroupId;
+                    internal int HardlinkCount;
+                    internal long Size;
+                    internal long AccessTime;
+                    internal long ModifiedTime;
+                    internal long CreationTime;
+                    internal long BlockSize;
+                    internal int DeviceId;
+                    internal int NumberOfBlocks;
+                    internal int IsDirectory;
+                    internal int IsFile;
+                    internal int IsSymbolicLink;
+                    internal int IsBlockDevice;
+                    internal int IsCharacterDevice;
+                    internal int IsNamedPipe;
+                    internal int IsSocket;
+                }
+
+                [DllImport(psLib, CharSet = CharSet.Ansi, SetLastError = true)]
+                internal static extern unsafe int GetCommonStat([MarshalAs(UnmanagedType.LPTStr)]string filePath,
+                                                         [MarshalAs(UnmanagedType.LPStruct)]out CommonStatStruct cs);
             }
         }
     }
