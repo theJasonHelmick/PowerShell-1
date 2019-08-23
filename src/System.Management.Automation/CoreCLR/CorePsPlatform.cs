@@ -561,29 +561,147 @@ namespace System.Management.Automation
         // the string perror would give you for the last set value of errno.
         // No manual mapping is required. .NET Core maps the Linux errno
         // to a PAL value and calls strerror_r underneath to generate the message.
-        internal static class Unix
+        /// <summary>Unix Class</summary>
+        public static class Unix
         {
+            /// <summary>x</summary>
+            public enum StatMask
+            {
+                /// <summary>x</summary>
+                OwnerModeMask  = 0x1C0,
+                /// <summary>x</summary>
+                OwnerRead      = 0x100,
+                /// <summary>x</summary>
+                OwnerWrite     = 0x080,
+                /// <summary>x</summary>
+                OwnerExecute   = 0x040,
+                /// <summary>x</summary>
+                GroupModeMask  = 0x038,
+                /// <summary>x</summary>
+                GroupRead      = 0x20,
+                /// <summary>x</summary>
+                GroupWrite     = 0x10,
+                /// <summary>x</summary>
+                GroupExecute   = 0x8,
+                /// <summary>x</summary>
+                OtherModeMask  = 0x007,
+                /// <summary>x</summary>
+                OtherRead      = 0x004,
+                /// <summary>x</summary>
+                OtherWrite     = 0x002,
+                /// <summary>x</summary>
+                OtherExecute   = 0x001,
+                /// <summary>x</summary>
+                SetStickyMask  = 0x200,
+                /// <summary>x</summary>
+                SetGidMask     = 0x400,
+                /// <summary>x</summary>
+                SetUidMask     = 0x800,
+            }
+            /// <summary>Common stat</summary>
             public class CommonStat
             {
+                /// <summary>x</summary>
                 public long Inode;
+                /// <summary>x</summary>
                 public int Mode;
+                /// <summary>x</summary>
                 public int UserId;
+                /// <summary>x</summary>
                 public int GroupId;
+                /// <summary>x</summary>
                 public int HardlinkCount;
+                /// <summary>x</summary>
                 public long Size;
-                public long AccessTime;
-                public long ModifiedTime;
-                public long CreationTime;
+                /// <summary>x</summary>
+                public DateTime AccessTime;
+                /// <summary>x</summary>
+                public DateTime ModifiedTime;
+                /// <summary>x</summary>
+                public DateTime CreationTime;
+                /// <summary>x</summary>
                 public long BlockSize;
+                /// <summary>x</summary>
                 public int DeviceId;
+                /// <summary>x</summary>
                 public int NumberOfBlocks;
-                public int IsDirectory;
-                public int IsFile;
-                public int IsSymbolicLink;
-                public int IsBlockDevice;
-                public int IsCharacterDevice;
-                public int IsNamedPipe;
-                public int IsSocket;
+                /// <summary>x</summary>
+                public bool IsDirectory;
+                /// <summary>x</summary>
+                public bool IsFile;
+                /// <summary>x</summary>
+                public bool IsSymbolicLink;
+                /// <summary>x</summary>
+                public bool IsBlockDevice;
+                /// <summary>x</summary>
+                public bool IsCharacterDevice;
+                /// <summary>x</summary>
+                public bool IsNamedPipe;
+                /// <summary>x</summary>
+                public bool IsSocket;
+
+                /// <summary>x</summary>
+                public int GetSpecificMode(StatMask mask)
+                {
+                    return Mode & (int)mask;
+                }
+
+                private Dictionary<StatMask, string> map = new Dictionary<StatMask, string>() {
+                        { StatMask.OwnerRead, "r" },
+                        { StatMask.OwnerWrite, "w" },
+                        { StatMask.OwnerExecute, "x" },
+                        { StatMask.GroupRead, "r" },
+                        { StatMask.GroupWrite, "w" },
+                        { StatMask.GroupExecute, "x" },
+                        { StatMask.OtherRead, "r" },
+                        { StatMask.OtherWrite, "w" },
+                        { StatMask.OtherExecute, "x" },
+                };
+
+                /// <summary>x</summary>
+                public string GetModeString()
+                {
+                    StatMask[] perms = new StatMask[] {
+                        StatMask.OwnerRead,
+                        StatMask.OwnerWrite,
+                        StatMask.OwnerExecute,
+                        StatMask.GroupRead,
+                        StatMask.GroupWrite,
+                        StatMask.GroupExecute,
+                        StatMask.OtherRead,
+                        StatMask.OtherWrite,
+                        StatMask.OtherExecute
+                    };
+                    System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                    if ( IsDirectory ) {
+                        sb.Append("d");
+                    }
+                    else if ( IsBlockDevice ) {
+                        sb.Append("b");
+                    }
+                    else if ( IsCharacterDevice ) {
+                        sb.Append("c");
+                    }
+                    else if ( IsSymbolicLink ) {
+                        sb.Append("l");
+                    }
+                    else if ( IsSocket ) {
+                        sb.Append("s");
+                    }
+                    else {
+                        sb.Append("-");
+                    }
+                    
+                    foreach( StatMask p in perms ) {
+                        if ( (Mode & (int)p) == (int)p) {
+                            sb.Append(map[p]);
+                        }
+                        else {
+                            sb.Append("-");
+                        }
+                    }
+                    return sb.ToString();
+                }
             }
 
             // This is a helper that attempts to map errno into a PowerShell ErrorCategory
@@ -592,12 +710,14 @@ namespace System.Management.Automation
                 return (ErrorCategory)Unix.NativeMethods.GetErrorCategory(errno);
             }
 
+                /// <summary>x</summary>
             public static bool IsHardLink(ref IntPtr handle)
             {
                 // TODO:PSL implement using fstat to query inode refcount to see if it is a hard link
                 return false;
             }
 
+                /// <summary>x</summary>
             public static bool IsHardLink(FileSystemInfo fs)
             {
                 if (!fs.Exists || (fs.Attributes & FileAttributes.Directory) == FileAttributes.Directory)
@@ -618,10 +738,8 @@ namespace System.Management.Automation
                 }
             }
 
-            public static CommonStat GetStat(string path)
+            private static CommonStat CopyStatStruct(NativeMethods.CommonStatStruct css)
             {
-                NativeMethods.CommonStatStruct css;
-                if ( NativeMethods.GetCommonStat(path, out css) == 0 ) {
                     CommonStat cs = new CommonStat();
                     cs.Inode = css.Inode;
                     cs.Mode = css.Mode;
@@ -629,24 +747,51 @@ namespace System.Management.Automation
                     cs.GroupId = css.GroupId;
                     cs.HardlinkCount = css.HardlinkCount;
                     cs.Size = css.Size;
-                    cs.AccessTime = css.AccessTime;
-                    cs.ModifiedTime = css.ModifiedTime;
-                    cs.CreationTime = css.CreationTime;
+                    cs.AccessTime = new DateTime(1970, 1, 1).AddSeconds(css.AccessTime).ToLocalTime();
+                    cs.ModifiedTime = new DateTime(1970, 1, 1).AddSeconds(css.ModifiedTime).ToLocalTime();
+                    cs.CreationTime = new DateTime(1970, 1, 1).AddSeconds(css.CreationTime).ToLocalTime();
                     cs.BlockSize = css.BlockSize;
                     cs.DeviceId = css.DeviceId;
                     cs.NumberOfBlocks = css.NumberOfBlocks;
-                    cs.IsDirectory = css.IsDirectory;
-                    cs.IsFile = css.IsFile;
-                    cs.IsSymbolicLink = css.IsSymbolicLink;
-                    cs.IsBlockDevice = css.IsBlockDevice;
-                    cs.IsCharacterDevice = css.IsCharacterDevice;
-                    cs.IsNamedPipe = css.IsNamedPipe;
-                    cs.IsSocket = css.IsSocket;
+                    cs.IsDirectory = css.IsDirectory == 1;
+                    cs.IsFile = css.IsFile == 1;
+                    cs.IsSymbolicLink = css.IsSymbolicLink == 1;
+                    cs.IsBlockDevice = css.IsBlockDevice == 1;
+                    cs.IsCharacterDevice = css.IsCharacterDevice == 1;
+                    cs.IsNamedPipe = css.IsNamedPipe == 1;
+                    cs.IsSocket = css.IsSocket == 1;
                     return cs;
+            }
+
+                /// <summary>x</summary>
+            public static CommonStat GetLStat(string path)
+            {
+                NativeMethods.CommonStatStruct css;
+                if ( NativeMethods.GetCommonLStat(path, out css) == 0 ) {
+                    return CopyStatStruct(css);
                 }
                 throw new InvalidOperationException("GetStat");
             }
 
+                /// <summary>x</summary>
+            public static CommonStat GetStat(string path)
+            {
+                NativeMethods.CommonStatStruct css;
+                if ( NativeMethods.GetCommonStat(path, out css) == 0 ) {
+                    return CopyStatStruct(css);
+                }
+                throw new InvalidOperationException("GetStat");
+            }
+
+            /// <summary>Convert the mode to a logical string</summary>
+            public static string ConvertModeToSymbolic(int mode)
+            {
+                System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                return sb.ToString();
+
+            }
+
+                /// <summary>x</summary>
             public static int GetProcFSParentPid(int pid)
             {
                 const int invalidPid = -1;
@@ -672,7 +817,8 @@ namespace System.Management.Automation
                 }
             }
 
-            internal static class NativeMethods
+                /// <summary>x</summary>
+            public static class NativeMethods
             {
                 private const string psLib = "libpsl-native";
 
@@ -756,33 +902,55 @@ namespace System.Management.Automation
 
 
                 // This is a struct from <getcommonstat.h>
+                /// <summary>x</summary>
                 [StructLayout(LayoutKind.Sequential)]
-                internal unsafe struct CommonStatStruct
+                public struct CommonStatStruct
                 {
-                    internal long Inode;
-                    internal int Mode;
-                    internal int UserId;
-                    internal int GroupId;
-                    internal int HardlinkCount;
-                    internal long Size;
-                    internal long AccessTime;
-                    internal long ModifiedTime;
-                    internal long CreationTime;
-                    internal long BlockSize;
-                    internal int DeviceId;
-                    internal int NumberOfBlocks;
-                    internal int IsDirectory;
-                    internal int IsFile;
-                    internal int IsSymbolicLink;
-                    internal int IsBlockDevice;
-                    internal int IsCharacterDevice;
-                    internal int IsNamedPipe;
-                    internal int IsSocket;
+                /// <summary>x</summary>
+                    public long Inode;
+                /// <summary>x</summary>
+                    public int Mode;
+                /// <summary>x</summary>
+                    public int UserId;
+                /// <summary>x</summary>
+                    public int GroupId;
+                /// <summary>x</summary>
+                    public int HardlinkCount;
+                /// <summary>x</summary>
+                    public long Size;
+                /// <summary>x</summary>
+                    public long AccessTime;
+                /// <summary>x</summary>
+                    public long ModifiedTime;
+                /// <summary>x</summary>
+                    public long CreationTime;
+                /// <summary>x</summary>
+                    public long BlockSize;
+                /// <summary>x</summary>
+                    public int DeviceId;
+                /// <summary>x</summary>
+                    public int NumberOfBlocks;
+                /// <summary>x</summary>
+                    public int IsDirectory;
+                /// <summary>x</summary>
+                    public int IsFile;
+                /// <summary>x</summary>
+                    public int IsSymbolicLink;
+                /// <summary>x</summary>
+                    public int IsBlockDevice;
+                /// <summary>x</summary>
+                    public int IsCharacterDevice;
+                /// <summary>x</summary>
+                    public int IsNamedPipe;
+                /// <summary>x</summary>
+                    public int IsSocket;
                 }
 
                 [DllImport(psLib, CharSet = CharSet.Ansi, SetLastError = true)]
-                internal static extern unsafe int GetCommonStat([MarshalAs(UnmanagedType.LPTStr)]string filePath,
-                                                         [MarshalAs(UnmanagedType.LPStruct)]out CommonStatStruct cs);
+                internal static extern unsafe int GetCommonLStat(string filePath, [Out] out CommonStatStruct cs);
+
+                [DllImport(psLib, CharSet = CharSet.Ansi, SetLastError = true)]
+                internal static extern unsafe int GetCommonStat(string filePath, [Out] out CommonStatStruct cs);
             }
         }
     }
