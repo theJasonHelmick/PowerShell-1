@@ -688,6 +688,9 @@ namespace System.Management.Automation
                     else if ( IsSocket ) {
                         sb.Append("s");
                     }
+                    else if ( IsNamedPipe ) {
+                        sb.Append("p");
+                    }
                     else {
                         sb.Append("-");
                     }
@@ -701,6 +704,16 @@ namespace System.Management.Automation
                         }
                     }
                     return sb.ToString();
+                }
+                
+                /// <summary>Get the user name</summary>
+                public string GetUserName() {
+                    return NativeMethods.GetPwUid(UserId);
+                }
+                
+                /// <summary>Get the group name</summary>
+                public string GetGroupName() {
+                    return NativeMethods.GetGrGid(GroupId);
                 }
             }
 
@@ -951,6 +964,12 @@ namespace System.Management.Automation
 
                 [DllImport(psLib, CharSet = CharSet.Ansi, SetLastError = true)]
                 internal static extern unsafe int GetCommonStat(string filePath, [Out] out CommonStatStruct cs);
+
+                [DllImport(psLib, CharSet = CharSet.Ansi, SetLastError = true)]
+                internal static extern string GetPwUid(int id);
+
+                [DllImport(psLib, CharSet = CharSet.Ansi, SetLastError = true)]
+                internal static extern string GetGrGid(int id);
             }
         }
     }
