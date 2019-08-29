@@ -41,21 +41,6 @@ namespace System.Management.Automation.Runspaces
 
         private static IEnumerable<FormatViewDefinition> ViewsOf_FileSystemTypes(CustomControl[] sharedControls)
         {
-            yield return new FormatViewDefinition("children",
-                TableControl.Create()
-                    .GroupByProperty("PSParentPath", customControl: sharedControls[0])
-                    .AddHeader(Alignment.Left, label: "Mode", width: 7)
-                    .AddHeader(Alignment.Right, label: "LastWriteTime", width: 26)
-                    .AddHeader(Alignment.Right, label: "Length", width: 14)
-                    .AddHeader(Alignment.Left, label: "Name")
-                    .StartRowDefinition(wrap: true)
-                        .AddPropertyColumn("ModeWithoutHardLink")
-                        .AddPropertyColumn("LastWriteTimeString")
-                        .AddPropertyColumn("LengthString")
-                        .AddPropertyColumn("NameString")
-                    .EndRowDefinition()
-                .EndTable());
-
 #if UNIX
             yield return new FormatViewDefinition("childrenWithUnixStat",
                 TableControl.Create()
@@ -76,6 +61,21 @@ namespace System.Management.Automation.Runspaces
                     .EndRowDefinition()
                 .EndTable());
 #endif
+
+            yield return new FormatViewDefinition("children",
+                TableControl.Create()
+                    .GroupByProperty("PSParentPath", customControl: sharedControls[0])
+                    .AddHeader(Alignment.Left, label: "Mode", width: 7)
+                    .AddHeader(Alignment.Right, label: "LastWriteTime", width: 26)
+                    .AddHeader(Alignment.Right, label: "Length", width: 14)
+                    .AddHeader(Alignment.Left, label: "Name")
+                    .StartRowDefinition(wrap: true)
+                        .AddPropertyColumn("ModeWithoutHardLink")
+                        .AddPropertyColumn("LastWriteTimeString")
+                        .AddPropertyColumn("LengthString")
+                        .AddPropertyColumn("NameString")
+                    .EndRowDefinition()
+                .EndTable());
 
             yield return new FormatViewDefinition("childrenWithHardlink",
                 TableControl.Create()
