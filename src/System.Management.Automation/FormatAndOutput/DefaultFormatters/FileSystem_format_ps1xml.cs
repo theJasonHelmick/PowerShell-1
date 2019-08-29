@@ -56,6 +56,27 @@ namespace System.Management.Automation.Runspaces
                     .EndRowDefinition()
                 .EndTable());
 
+#if UNIX
+            yield return new FormatViewDefinition("childrenWithUnixStat",
+                TableControl.Create()
+                    .GroupByProperty("PSParentPath", customControl: sharedControls[0])
+                    .AddHeader(Alignment.Left, label: "UnixMode", width: 10)
+                    .AddHeader(Alignment.Left, label: "User", width: 10)
+                    .AddHeader(Alignment.Left, label: "Group", width: 10)
+                    .AddHeader(Alignment.Right, label: "LastWriteTime", width: 14)
+                    .AddHeader(Alignment.Right, label: "Size", width: 14)
+                    .AddHeader(Alignment.Left, label: "Name")
+                    .StartRowDefinition(wrap: true)
+                        .AddPropertyColumn("UnixMode")
+                        .AddPropertyColumn("User")
+                        .AddPropertyColumn("Group")
+                        .AddPropertyColumn("LastWriteTime", alignment: Alignment.Right, format: "{0:MMM} {0:dd} {0:hh}:{0:mm}")
+                        .AddPropertyColumn("Size")
+                        .AddPropertyColumn("NameString")
+                    .EndRowDefinition()
+                .EndTable());
+#endif
+
             yield return new FormatViewDefinition("childrenWithHardlink",
                 TableControl.Create()
                     .GroupByProperty("PSParentPath", customControl: sharedControls[0])

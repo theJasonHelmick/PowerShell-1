@@ -1862,6 +1862,23 @@ namespace System.Management.Automation.Provider
 
                 result.AddOrSetProperty("PSChildName", childName);
                 providerBaseTracer.WriteLine("Attaching {0} = {1}", "PSChildName", childName);
+
+#if UNIX
+                // Add a commonstat structure to file system objects
+                if ( ProviderInfo.ImplementingType == typeof(Microsoft.PowerShell.Commands.FileSystemProvider))
+                {
+                    try
+                    {
+                        var commonStat = Platform.Unix.GetLStat(path);
+                        result.AddOrSetProperty("UnixStat", commonStat);
+                    }
+                    catch
+                    {
+                        result.AddOrSetProperty("UnixStat", null);
+                    }
+                }
+#endif
+
             }
 
             // PSDriveInfo
