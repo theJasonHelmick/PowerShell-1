@@ -639,6 +639,12 @@ namespace System.Management.Automation
                 public bool IsNamedPipe;
                 /// <summary>x</summary>
                 public bool IsSocket;
+                /// <summary>x</summary>
+                public bool IsSetUid;
+                /// <summary>x</summary>
+                public bool IsSetGid;
+                /// <summary>x</summary>
+                public bool IsSticky;
 
                 /// <summary>x</summary>
                 public int GetSpecificMode(StatMask mask)
@@ -697,7 +703,15 @@ namespace System.Management.Automation
                     
                     foreach( StatMask p in perms ) {
                         if ( (Mode & (int)p) == (int)p) {
-                            sb.Append(map[p]);
+                            if ((p == StatMask.OwnerExecute && IsSetUid) || (p == StatMask.GroupExecute && IsSetGid)) {
+                                sb.Append("s");
+                            }
+                            else if ( p == StatMask.OtherExecute && IsSticky && IsDirectory ) {
+                                sb.Append("t");
+                            }
+                            else {
+                                sb.Append(map[p]);
+                            }
                         }
                         else {
                             sb.Append("-");
@@ -773,6 +787,9 @@ namespace System.Management.Automation
                     cs.IsCharacterDevice = css.IsCharacterDevice == 1;
                     cs.IsNamedPipe = css.IsNamedPipe == 1;
                     cs.IsSocket = css.IsSocket == 1;
+                    cs.IsSetUid = css.IsSetUid == 1;
+                    cs.IsSetGid = css.IsSetGid == 1;
+                    cs.IsSticky = css.IsSticky == 1;
                     return cs;
             }
 
@@ -957,6 +974,12 @@ namespace System.Management.Automation
                     public int IsNamedPipe;
                 /// <summary>x</summary>
                     public int IsSocket;
+                /// <summary>x</summary>
+                    public int IsSetUid;
+                /// <summary>x</summary>
+                    public int IsSetGid;
+                /// <summary>x</summary>
+                    public int IsSticky;
                 }
 
                 [DllImport(psLib, CharSet = CharSet.Ansi, SetLastError = true)]

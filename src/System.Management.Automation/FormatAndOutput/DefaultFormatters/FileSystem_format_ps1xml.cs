@@ -55,7 +55,7 @@ namespace System.Management.Automation.Runspaces
                         .AddPropertyColumn("UnixMode")
                         .AddPropertyColumn("User")
                         .AddPropertyColumn("Group")
-                        .AddPropertyColumn("LastWriteTime", alignment: Alignment.Right, format: "{0:MMM} {0:dd} {0:hh}:{0:mm}")
+                        .AddScriptBlockColumn(scriptBlock: @"$fdate = $_.LastWriteTime; if ( $fdate -gt [DateTime]::Now.AddDays(-180) ) { '{0:MMM} {0:dd} {0:hh}:{0:mm}' -f $fdate } else { '{0:MMM} {0:dd}  {0:yyyy}' -f $fdate }")
                         .AddPropertyColumn("Size")
                         .AddPropertyColumn("NameString")
                     .EndRowDefinition()
