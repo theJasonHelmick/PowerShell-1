@@ -564,6 +564,27 @@ namespace System.Management.Automation
         /// <summary>Unix Class</summary>
         public static class Unix
         {
+            private static Dictionary<int,string> UsernameCache = new Dictionary<int,string>();
+            private static Dictionary<int,string> GroupnameCache = new Dictionary<int,string>();
+            /// <summary>x</summary>
+            public enum ItemType
+            {
+                /// <summary>x</summary>
+                Directory,
+                /// <summary>x</summary>
+                File,
+                /// <summary>x</summary>
+                SymbolicLink,
+                /// <summary>x</summary>
+                BlockDevice,
+                /// <summary>x</summary>
+                CharacterDevice,
+                /// <summary>x</summary>
+                NamedPipe,
+                /// <summary>x</summary>
+                Socket,
+            }
+
             /// <summary>x</summary>
             public enum StatMask
             {
@@ -618,7 +639,7 @@ namespace System.Management.Automation
                 /// <summary>x</summary>
                 public DateTime ModifiedTime;
                 /// <summary>x</summary>
-                public DateTime CreationTime;
+                public DateTime StatusChangeTime;
                 /// <summary>x</summary>
                 public long BlockSize;
                 /// <summary>x</summary>
@@ -626,31 +647,13 @@ namespace System.Management.Automation
                 /// <summary>x</summary>
                 public int NumberOfBlocks;
                 /// <summary>x</summary>
-                public bool IsDirectory;
-                /// <summary>x</summary>
-                public bool IsFile;
-                /// <summary>x</summary>
-                public bool IsSymbolicLink;
-                /// <summary>x</summary>
-                public bool IsBlockDevice;
-                /// <summary>x</summary>
-                public bool IsCharacterDevice;
-                /// <summary>x</summary>
-                public bool IsNamedPipe;
-                /// <summary>x</summary>
-                public bool IsSocket;
+                public ItemType ItemType;
                 /// <summary>x</summary>
                 public bool IsSetUid;
                 /// <summary>x</summary>
                 public bool IsSetGid;
                 /// <summary>x</summary>
                 public bool IsSticky;
-
-                /// <summary>x</summary>
-                public int GetSpecificMode(StatMask mask)
-                {
-                    return Mode & (int)mask;
-                }
 
                 private Dictionary<StatMask, string> map = new Dictionary<StatMask, string>() {
                         { StatMask.OwnerRead, "r" },
@@ -678,35 +681,62 @@ namespace System.Management.Automation
                         StatMask.OtherWrite,
                         StatMask.OtherExecute
                     };
+
+                    // start the mode string with the ItemType
                     System.Text.StringBuilder sb = new System.Text.StringBuilder();
-                    if ( IsDirectory ) {
+                    switch ( ItemType ) {
+                        case ItemType.Directory:
+                            sb.Append("d");
+                            break;
+                        case ItemType.BlockDevice:
+                            sb.Append("b");
+                            break;
+                        case ItemType.CharacterDevice:
+                            sb.Append("c");
+                            break;
+                        case ItemType.SymbolicLink:
+                            sb.Append("l");
+                            break;
+                        case ItemType.Socket:
+                            sb.Append("s");
+                            break;
+                        case ItemType.NamedPipe:
+                            sb.Append("p");
+                            break;
+                        default:
+                            sb.Append("-");
+                            break;
+                    }
+                    /*
+                    if ( ItemType == ItemType.Directory ) {
                         sb.Append("d");
                     }
-                    else if ( IsBlockDevice ) {
+                    else if ( ItemType == ItemType.BlockDevice ) {
                         sb.Append("b");
                     }
-                    else if ( IsCharacterDevice ) {
+                    else if ( ItemType == ItemType.CharacterDevice ) {
                         sb.Append("c");
                     }
-                    else if ( IsSymbolicLink ) {
+                    else if ( ItemType == ItemType.SymbolicLink ) {
                         sb.Append("l");
                     }
-                    else if ( IsSocket ) {
+                    else if ( ItemType == ItemType.Socket ) {
                         sb.Append("s");
                     }
-                    else if ( IsNamedPipe ) {
+                    else if ( ItemType == ItemType.NamedPipe ) {
                         sb.Append("p");
                     }
                     else {
                         sb.Append("-");
                     }
+                    */
                     
                     foreach( StatMask p in perms ) {
                         if ( (Mode & (int)p) == (int)p) {
                             if ((p == StatMask.OwnerExecute && IsSetUid) || (p == StatMask.GroupExecute && IsSetGid)) {
                                 sb.Append("s");
                             }
-                            else if ( p == StatMask.OtherExecute && IsSticky && IsDirectory ) {
+                            else if ( p == StatMask.OtherExecute && IsSticky && (ItemType == ItemType.Directory)) {
                                 sb.Append("t");
                             }
                             else {
@@ -722,12 +752,25 @@ namespace System.Management.Automation
                 
                 /// <summary>Get the user name</summary>
                 public string GetUserName() {
-                    return NativeMethods.GetPwUid(UserId);
+                    string username;
+                    if ( UsernameCache.TryGetValue(UserId, out username)) {
+                        return username;
+                    }
+                    username = NativeMethods.GetPwUid(UserId);
+                    UsernameCache.Add(UserId, username);
+                    return username;
+
                 }
                 
                 /// <summary>Get the group name</summary>
                 public string GetGroupName() {
-                    return NativeMethods.GetGrGid(GroupId);
+                    string groupname;
+                    if ( GroupnameCache.TryGetValue(GroupId, out groupname)) {
+                        return groupname;
+                    }
+                    groupname = NativeMethods.GetGrGid(GroupId);
+                    GroupnameCache.Add(GroupId, groupname);
+                    return groupname;
                 }
             }
 
@@ -776,17 +819,40 @@ namespace System.Management.Automation
                     cs.Size = css.Size;
                     cs.AccessTime = new DateTime(1970, 1, 1).AddSeconds(css.AccessTime).ToLocalTime();
                     cs.ModifiedTime = new DateTime(1970, 1, 1).AddSeconds(css.ModifiedTime).ToLocalTime();
-                    cs.CreationTime = new DateTime(1970, 1, 1).AddSeconds(css.CreationTime).ToLocalTime();
+                    cs.StatusChangeTime = new DateTime(1970, 1, 1).AddSeconds(css.CreationTime).ToLocalTime();
                     cs.BlockSize = css.BlockSize;
                     cs.DeviceId = css.DeviceId;
                     cs.NumberOfBlocks = css.NumberOfBlocks;
-                    cs.IsDirectory = css.IsDirectory == 1;
-                    cs.IsFile = css.IsFile == 1;
-                    cs.IsSymbolicLink = css.IsSymbolicLink == 1;
-                    cs.IsBlockDevice = css.IsBlockDevice == 1;
-                    cs.IsCharacterDevice = css.IsCharacterDevice == 1;
-                    cs.IsNamedPipe = css.IsNamedPipe == 1;
-                    cs.IsSocket = css.IsSocket == 1;
+                    if ( css.IsDirectory == 1 ) {
+                        cs.ItemType = ItemType.Directory;
+                    }
+                    else if ( css.IsFile == 1) {
+                        cs.ItemType = ItemType.File;
+                    }
+                    else if ( css.IsSymbolicLink == 1) {
+                        cs.ItemType = ItemType.SymbolicLink;
+                    }
+                    else if ( css.IsBlockDevice == 1) {
+                        cs.ItemType = ItemType.BlockDevice;
+                    }
+                    else if ( css.IsCharacterDevice == 1) {
+                        cs.ItemType = ItemType.CharacterDevice;
+                    }
+                    else if ( css.IsNamedPipe == 1) {
+                        cs.ItemType = ItemType.NamedPipe;
+                    }
+                    else {
+                        cs.ItemType = ItemType.Socket;
+                    }
+
+                    // cs.IsDirectory = css.IsDirectory == 1;
+                    // cs.IsFile = css.IsFile == 1;
+                    // cs.IsSymbolicLink = css.IsSymbolicLink == 1;
+                    // cs.IsBlockDevice = css.IsBlockDevice == 1;
+                    // cs.IsCharacterDevice = css.IsCharacterDevice == 1;
+                    // cs.IsNamedPipe = css.IsNamedPipe == 1;
+                    // cs.IsSocket = css.IsSocket == 1;
+
                     cs.IsSetUid = css.IsSetUid == 1;
                     cs.IsSetGid = css.IsSetGid == 1;
                     cs.IsSticky = css.IsSticky == 1;
