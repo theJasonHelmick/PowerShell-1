@@ -45,6 +45,30 @@ function Get-ClassCoverageData([xml.xmlelement]$element)
 
 #region FileCoverage
 
+class CoverageFileInfo {
+    [int]$LineCount
+    [int]$CharacterCount
+    [int]$WordCount
+    CoverageFileInfo([string]$path) {
+        $this.LineCount = [io.file]::ReadAllLines($path).Count
+        $this.CharacterCount = (Get-Item $path).Length
+        $this.wordCount = $index = 0
+        $text = [io.file]::ReadAllText($path)
+        while ( $index -lt $text.Length -and [char]::IsWhiteSpace($text[$index])) {
+            $index++
+        }
+        while ( $index -lt $text.length ) {
+            while ( $index -lt $text.length -and ! [char]::IsWhiteSpace($text[$index])) {
+                $index++
+            }
+            $this.wordCount++
+            while ( $index -lt $text.length -and [char]::IsWhiteSpace($text[$index])) {
+                $index++
+            }
+        }
+    }
+}
+
 class FileCoverage
 {
     [string]$Path
@@ -56,6 +80,13 @@ class FileCoverage
         $this.Path = $p
         $this.Hit = [Collections.Generic.HashSet[int]]::new()
         $this.Miss = [Collections.Generic.HashSet[int]]::new()
+    }
+    [CoverageFileInfo] GetCoverageFileInfo() {
+        return [CoverageFileInfo]::new($this.Path)
+    }
+    [string[]] ShowCoverage() {
+        [string[]]$output = Format-FileCoverage $this
+        return $output
     }
 }
 
@@ -126,6 +157,17 @@ function Format-FileCoverage
         [Parameter()][string]$newBase = ""
     )
 
+    BEGIN {
+        if ( Get-Command tput ) {
+            $RED = tput setaf 1
+            $GREEN = tput setaf 2
+            $WHITE = tput setaf 7
+            $UNSET = tput sgr0
+        }
+        else {
+            $RED = $GREEN = $WHITE = $UNSET = ""
+        }
+    }
     PROCESS {
         $file = $CoverageData.Path
         $filepath = $file -replace "$oldBase","${newBase}"
@@ -142,9 +184,9 @@ function Format-FileCoverage
                     $sign = " "
                 }
                 $outputline = "{0:0000} {1} {2}" -f ($i+1),$sign,$content[$i]
-                if ( $sign -eq "+" ) { write-host -fore green $outputline }
-                elseif ( $sign -eq "-" ) { write-host -fore red $outputline }
-                else { write-host -fore white $outputline }
+                if ( $sign -eq "+" ) { "${GREEN}${outputline}${UNSET}" }
+                elseif ( $sign -eq "-" ) { "${RED}${outputline}${UNSET}" }
+                else { "${WHITE}${outputline}${UNSET}" }
             }
         }
         else {
