@@ -2011,15 +2011,16 @@ namespace System.Management.Automation.Runspaces
             yield return td252;
 
 #if UNIX
-            var td253 = new TypeData("System.IO.FileSystemInfo");
+            if (ExperimentalFeature.IsEnabled("PSUnixFileStat"))
+            {
+                var td253 = new TypeData("System.IO.FileSystemInfo");
+                td253.Members.Add("UnixMode", new ScriptPropertyData(@"UnixMode",GetScriptBlock(@" if ($this.UnixStat) { $this.UnixStat.GetModeString() } else { $this.Mode } ")));
+                td253.Members.Add("User", new ScriptPropertyData(@"User",GetScriptBlock(@" if ($this.UnixStat) { $this.UnixStat.GetUserName() } ")));
+                td253.Members.Add("Group", new ScriptPropertyData(@"Group",GetScriptBlock(@" if ($this.UnixStat) { $this.UnixStat.GetGroupName() } ")));
+                td253.Members.Add("Size", new ScriptPropertyData(@"Size",GetScriptBlock(@"if ($this.UnixStat) { $this.UnixStat.Size } ")));
+                yield return td253;
 
-            td253.Members.Add("UnixMode", new ScriptPropertyData(@"UnixMode",GetScriptBlock(@" if ($this.UnixStat) { $this.UnixStat.GetModeString() } else { $this.Mode } ")));
-            td253.Members.Add("User", new ScriptPropertyData(@"User",GetScriptBlock(@" if ($this.UnixStat) { $this.UnixStat.GetUserName() } ")));
-            td253.Members.Add("Group", new ScriptPropertyData(@"Group",GetScriptBlock(@" if ($this.UnixStat) { $this.UnixStat.GetGroupName() } ")));
-            td253.Members.Add("Size", new ScriptPropertyData(@"Size",GetScriptBlock(@"if ($this.UnixStat) { $this.UnixStat.Size } ")));
-
-            yield return td253;
-
+            }
 #endif
         }
     }

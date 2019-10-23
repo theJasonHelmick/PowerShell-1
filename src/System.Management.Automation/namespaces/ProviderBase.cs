@@ -1864,17 +1864,21 @@ namespace System.Management.Automation.Provider
                 providerBaseTracer.WriteLine("Attaching {0} = {1}", "PSChildName", childName);
 
 #if UNIX
-                // Add a commonstat structure to file system objects
-                if ( ProviderInfo.ImplementingType == typeof(Microsoft.PowerShell.Commands.FileSystemProvider))
-                {
-                    try
+                if (ExperimentalFeature.IsEnabled("PSUnixFileStat")) {
+                    // Add a commonstat structure to file system objects
+                    if (ProviderInfo.ImplementingType == typeof(Microsoft.PowerShell.Commands.FileSystemProvider))
                     {
-                        var commonStat = Platform.Unix.GetLStat(path);
-                        result.AddOrSetProperty("UnixStat", commonStat);
-                    }
-                    catch
-                    {
-                        result.AddOrSetProperty("UnixStat", null);
+                        try
+                        {
+                            // Use LStat because if you get a link, you want the information about the 
+                            // link, not the file.
+                            var commonStat = Platform.Unix.GetLStat(path);
+                            result.AddOrSetProperty("UnixStat", commonStat);
+                        }
+                        catch
+                        {
+                            result.AddOrSetProperty("UnixStat", null);
+                        }
                     }
                 }
 #endif
