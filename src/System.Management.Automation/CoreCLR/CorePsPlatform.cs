@@ -566,96 +566,96 @@ namespace System.Management.Automation
         {
             private static Dictionary<int,string> UsernameCache = new Dictionary<int,string>();
             private static Dictionary<int,string> GroupnameCache = new Dictionary<int,string>();
-            /// <summary>x</summary>
+            /// <summary>The type of a unix file system item.</summary>
             public enum ItemType
             {
-                /// <summary>x</summary>
+                /// <summary>Directory</summary>
                 Directory,
-                /// <summary>x</summary>
+                /// <summary>File</summary>
                 File,
-                /// <summary>x</summary>
+                /// <summary>Symbolic Link</summary>
                 SymbolicLink,
-                /// <summary>x</summary>
+                /// <summary>Block Device</summary>
                 BlockDevice,
-                /// <summary>x</summary>
+                /// <summary>Character Device</summary>
                 CharacterDevice,
-                /// <summary>x</summary>
+                /// <summary>Named Pipe</summary>
                 NamedPipe,
-                /// <summary>x</summary>
+                /// <summary>Socket</summary>
                 Socket,
             }
 
-            /// <summary>x</summary>
+            /// <summary>The mask to use to retrieve specific mode bits from the mode value in the stat class.</summary>
             public enum StatMask
             {
-                /// <summary>x</summary>
+                /// <summary>The mask to collect the owner mode.</summary>
                 OwnerModeMask  = 0x1C0,
-                /// <summary>x</summary>
+                /// <summary>The mask to get the owners read bit.</summary>
                 OwnerRead      = 0x100,
-                /// <summary>x</summary>
+                /// <summary>The mask to get the owners write bit.</summary>
                 OwnerWrite     = 0x080,
-                /// <summary>x</summary>
+                /// <summary>The mask to get the owners execute bit.</summary>
                 OwnerExecute   = 0x040,
-                /// <summary>x</summary>
+                /// <summary>The mask to get the group mode.</summary>
                 GroupModeMask  = 0x038,
-                /// <summary>x</summary>
+                /// <summary>The mask to get the group mode.</summary>
                 GroupRead      = 0x20,
-                /// <summary>x</summary>
+                /// <summary>The mask to get the group mode.</summary>
                 GroupWrite     = 0x10,
-                /// <summary>x</summary>
+                /// <summary>The mask to get the group mode.</summary>
                 GroupExecute   = 0x8,
-                /// <summary>x</summary>
+                /// <summary>The mask to get the "other" mode.</summary>
                 OtherModeMask  = 0x007,
-                /// <summary>x</summary>
+                /// <summary>The mask to get the "other" read bit.</summary>
                 OtherRead      = 0x004,
-                /// <summary>x</summary>
+                /// <summary>The mask to get the "other" write bit.</summary>
                 OtherWrite     = 0x002,
-                /// <summary>x</summary>
+                /// <summary>The mask to get the "other" execute bit.</summary>
                 OtherExecute   = 0x001,
-                /// <summary>x</summary>
+                /// <summary>The mask to retrieve the sticky bit</summary>
                 SetStickyMask  = 0x200,
-                /// <summary>x</summary>
+                /// <summary>The mask to retrieve the setgid bit</summary>
                 SetGidMask     = 0x400,
-                /// <summary>x</summary>
+                /// <summary>The mask to retrieve the setuid bit</summary>
                 SetUidMask     = 0x800,
             }
-            /// <summary>Common stat</summary>
+            /// <summary>The Common Stat class</summary>
             public class CommonStat
             {
-                /// <summary>x</summary>
+                /// <summary>The inode of the filesystem item.</summary>
                 public long Inode;
-                /// <summary>x</summary>
+                /// <summary>The Mode of the filesystem item.</summary>
                 public int Mode;
-                /// <summary>x</summary>
+                /// <summary>The user id of the filesystem item.</summary>
                 public int UserId;
-                /// <summary>x</summary>
+                /// <summary>The group id of the filesystem item.</summary>
                 public int GroupId;
-                /// <summary>x</summary>
+                /// <summary>The number of hard links for the filesystem item.</summary>
                 public int HardlinkCount;
-                /// <summary>x</summary>
+                /// <summary>The size in bytes of the filesystem item.</summary>
                 public long Size;
-                /// <summary>x</summary>
+                /// <summary>The last access time of the filesystem item.</summary>
                 public DateTime AccessTime;
-                /// <summary>x</summary>
+                /// <summary>The last modified time for the filesystem item.</summary>
                 public DateTime ModifiedTime;
-                /// <summary>x</summary>
+                /// <summary>The last time the status changes for the filesystem item.</summary>
                 public DateTime StatusChangeTime;
-                /// <summary>x</summary>
+                /// <summary>The block size of the filesystem.</summary>
                 public long BlockSize;
-                /// <summary>x</summary>
+                /// <summary>The device id of the filesystem item.</summary>
                 public int DeviceId;
-                /// <summary>x</summary>
+                /// <summary>The number of blocks used by the filesystem item.</summary>
                 public int NumberOfBlocks;
-                /// <summary>x</summary>
+                /// <summary>The type of the filesystem item.</summary>
                 public ItemType ItemType;
-                /// <summary>x</summary>
+                /// <summary>Whether the filesystem item has the setuid bit enabled.</summary>
                 public bool IsSetUid;
-                /// <summary>x</summary>
+                /// <summary>Whether the filesystem item has the setgid bit enabled.</summary>
                 public bool IsSetGid;
-                /// <summary>x</summary>
+                /// <summary>Whether the filesystem item has the sticky bit enabled. This is only available for directories.</summary>
                 public bool IsSticky;
 
-                private Dictionary<StatMask, string> map = new Dictionary<StatMask, string>() {
+                private Dictionary<StatMask, string> modeMap = new Dictionary<StatMask, string>() {
                         { StatMask.OwnerRead, "r" },
                         { StatMask.OwnerWrite, "w" },
                         { StatMask.OwnerExecute, "x" },
@@ -667,10 +667,10 @@ namespace System.Management.Automation
                         { StatMask.OtherExecute, "x" },
                 };
 
-                /// <summary>x</summary>
+                /// <summary>Convert the mode to a string which is usable in our formatting</summary>
                 public string GetModeString()
                 {
-                    StatMask[] perms = new StatMask[] {
+                    StatMask[] permissions = new StatMask[] {
                         StatMask.OwnerRead,
                         StatMask.OwnerWrite,
                         StatMask.OwnerExecute,
@@ -707,40 +707,19 @@ namespace System.Management.Automation
                             sb.Append("-");
                             break;
                     }
-                    /*
-                    if ( ItemType == ItemType.Directory ) {
-                        sb.Append("d");
-                    }
-                    else if ( ItemType == ItemType.BlockDevice ) {
-                        sb.Append("b");
-                    }
-                    else if ( ItemType == ItemType.CharacterDevice ) {
-                        sb.Append("c");
-                    }
-                    else if ( ItemType == ItemType.SymbolicLink ) {
-                        sb.Append("l");
-                    }
-                    else if ( ItemType == ItemType.Socket ) {
-                        sb.Append("s");
-                    }
-                    else if ( ItemType == ItemType.NamedPipe ) {
-                        sb.Append("p");
-                    }
-                    else {
-                        sb.Append("-");
-                    }
-                    */
                     
-                    foreach( StatMask p in perms ) {
-                        if ( (Mode & (int)p) == (int)p) {
-                            if ((p == StatMask.OwnerExecute && IsSetUid) || (p == StatMask.GroupExecute && IsSetGid)) {
+                    foreach( StatMask permission in permissions ) {
+                        if ( (Mode & (int)permission) == (int)permission) {
+                            // Check for setuid
+                            if ((permission == StatMask.OwnerExecute && IsSetUid) || (permission == StatMask.GroupExecute && IsSetGid)) {
                                 sb.Append("s");
                             }
-                            else if ( p == StatMask.OtherExecute && IsSticky && (ItemType == ItemType.Directory)) {
+                            // Directories are sticky, rather than setuid
+                            else if ( permission == StatMask.OtherExecute && IsSticky && (ItemType == ItemType.Directory)) {
                                 sb.Append("t");
                             }
                             else {
-                                sb.Append(map[p]);
+                                sb.Append(modeMap[permission]);
                             }
                         }
                         else {
@@ -748,26 +727,37 @@ namespace System.Management.Automation
                         }
                     }
                     return sb.ToString();
+
                 }
                 
-                /// <summary>Get the user name</summary>
+                /// <summary>
+                /// Get the user name. This is used in formatting, but we shouldn't
+                /// do the pinvoke this unless we're going to use it.
+                /// </summary>
                 public string GetUserName() {
                     string username;
                     if ( UsernameCache.TryGetValue(UserId, out username)) {
                         return username;
                     }
+                    // Get and add the user name to the cache so we don't need to 
+                    // have a pinvoke for each file.
                     username = NativeMethods.GetPwUid(UserId);
                     UsernameCache.Add(UserId, username);
                     return username;
 
                 }
                 
-                /// <summary>Get the group name</summary>
+                /// <summary>
+                /// Get the group name. This is used in formatting, but we shouldn't
+                /// do the pinvoke this unless we're going to use it.
+                /// </summary>
                 public string GetGroupName() {
                     string groupname;
                     if ( GroupnameCache.TryGetValue(GroupId, out groupname)) {
                         return groupname;
                     }
+                    // Get and add the group name to the cache so we don't need to 
+                    // have a pinvoke for each file.
                     groupname = NativeMethods.GetGrGid(GroupId);
                     GroupnameCache.Add(GroupId, groupname);
                     return groupname;
@@ -780,14 +770,14 @@ namespace System.Management.Automation
                 return (ErrorCategory)Unix.NativeMethods.GetErrorCategory(errno);
             }
 
-                /// <summary>x</summary>
+            /// <summary>x</summary>
             public static bool IsHardLink(ref IntPtr handle)
             {
                 // TODO:PSL implement using fstat to query inode refcount to see if it is a hard link
                 return false;
             }
 
-                /// <summary>x</summary>
+            /// <summary>Determine if the item is a hardlink</summary>
             public static bool IsHardLink(FileSystemInfo fs)
             {
                 if (!fs.Exists || (fs.Attributes & FileAttributes.Directory) == FileAttributes.Directory)
@@ -802,10 +792,7 @@ namespace System.Management.Automation
                 {
                     return count > 1;
                 }
-                else
-                {
-                    throw new Win32Exception(Marshal.GetLastWin32Error());
-                }
+                throw new Win32Exception(Marshal.GetLastWin32Error());
             }
 
             private static CommonStat CopyStatStruct(NativeMethods.CommonStatStruct css)
@@ -819,10 +806,11 @@ namespace System.Management.Automation
                     cs.Size = css.Size;
                     cs.AccessTime = new DateTime(1970, 1, 1).AddSeconds(css.AccessTime).ToLocalTime();
                     cs.ModifiedTime = new DateTime(1970, 1, 1).AddSeconds(css.ModifiedTime).ToLocalTime();
-                    cs.StatusChangeTime = new DateTime(1970, 1, 1).AddSeconds(css.CreationTime).ToLocalTime();
+                    cs.StatusChangeTime = new DateTime(1970, 1, 1).AddSeconds(css.StatusChangeTime).ToLocalTime();
                     cs.BlockSize = css.BlockSize;
                     cs.DeviceId = css.DeviceId;
                     cs.NumberOfBlocks = css.NumberOfBlocks;
+
                     if ( css.IsDirectory == 1 ) {
                         cs.ItemType = ItemType.Directory;
                     }
@@ -845,49 +833,37 @@ namespace System.Management.Automation
                         cs.ItemType = ItemType.Socket;
                     }
 
-                    // cs.IsDirectory = css.IsDirectory == 1;
-                    // cs.IsFile = css.IsFile == 1;
-                    // cs.IsSymbolicLink = css.IsSymbolicLink == 1;
-                    // cs.IsBlockDevice = css.IsBlockDevice == 1;
-                    // cs.IsCharacterDevice = css.IsCharacterDevice == 1;
-                    // cs.IsNamedPipe = css.IsNamedPipe == 1;
-                    // cs.IsSocket = css.IsSocket == 1;
-
                     cs.IsSetUid = css.IsSetUid == 1;
                     cs.IsSetGid = css.IsSetGid == 1;
                     cs.IsSticky = css.IsSticky == 1;
+
                     return cs;
+
             }
 
-                /// <summary>x</summary>
+            /// <summary>Get the lstat info from a path</summary>
             public static CommonStat GetLStat(string path)
             {
                 NativeMethods.CommonStatStruct css;
                 if ( NativeMethods.GetCommonLStat(path, out css) == 0 ) {
                     return CopyStatStruct(css);
                 }
-                throw new InvalidOperationException("GetStat");
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+
             }
 
-                /// <summary>x</summary>
+            /// <summary>Get the stat info from a path</summary>
             public static CommonStat GetStat(string path)
             {
                 NativeMethods.CommonStatStruct css;
                 if ( NativeMethods.GetCommonStat(path, out css) == 0 ) {
                     return CopyStatStruct(css);
                 }
-                throw new InvalidOperationException("GetStat");
-            }
-
-            /// <summary>Convert the mode to a logical string</summary>
-            public static string ConvertModeToSymbolic(int mode)
-            {
-                System.Text.StringBuilder sb = new System.Text.StringBuilder();
-                return sb.ToString();
+                throw new Win32Exception(Marshal.GetLastWin32Error());
 
             }
 
-                /// <summary>x</summary>
+            /// <summary>Read the /proc file system for information about the parent</summary>
             public static int GetProcFSParentPid(int pid)
             {
                 const int invalidPid = -1;
@@ -942,17 +918,27 @@ namespace System.Management.Automation
                 [StructLayout(LayoutKind.Sequential)]
                 internal unsafe struct UnixTm
                 {
-                    public int tm_sec;    /* Seconds (0-60) */
-                    public int tm_min;    /* Minutes (0-59) */
-                    public int tm_hour;   /* Hours (0-23) */
-                    public int tm_mday;   /* Day of the month (1-31) */
-                    public int tm_mon;    /* Month (0-11) */
-                    public int tm_year;   /* Year - 1900 */
-                    public int tm_wday;   /* Day of the week (0-6, Sunday = 0) */
-                    public int tm_yday;   /* Day in the year (0-365, 1 Jan = 0) */
-                    public int tm_isdst;  /* Daylight saving time */
+                    /// <summary>Seconds (0-60)</summary>
+                    internal int tm_sec;
+                    /// <summary>Minutes (0-59)</summary>
+                    internal int tm_min;
+                    /// <summary>Hours (0-23)</summary>
+                    internal int tm_hour;
+                    /// <summary>Day of the month (1-31)</summary>
+                    internal int tm_mday;
+                    /// <summary>Month (0-11)</summary>
+                    internal int tm_mon;
+                    /// <summary>The year - 1900</summary>
+                    internal int tm_year;
+                    /// <summary>Day of the week (0-6, Sunday = 0)</summary>
+                    internal int tm_wday;
+                    /// <summary>Day in the year (0-365, 1 Jan = 0)</summary>
+                    internal int tm_yday;
+                    /// <summary>Daylight saving time</summary>
+                    internal int tm_isdst;
                 }
 
+                // We need a way to convert a DateTime to a unix date.j
                 internal static UnixTm DateTimeToUnixTm(DateTime date)
                 {
                     UnixTm tm;
@@ -997,55 +983,61 @@ namespace System.Management.Automation
                                                         out UInt64 device, out UInt64 inode);
 
 
-                // This is a struct from <getcommonstat.h>
-                /// <summary>x</summary>
+                /// <summary>
+                /// This is a struct from getcommonstat.h in the native library.
+                /// It's a synthetic construct of the Unix stat structure, which
+                /// presents the type of the member as the largest type of the member
+                /// across all stat structures on the platforms I could find. This allows
+                /// us to present a useful stat structure for all of our currently
+                /// supported platforms.
+                /// </summary>
                 [StructLayout(LayoutKind.Sequential)]
-                public struct CommonStatStruct
+                internal struct CommonStatStruct
                 {
-                /// <summary>x</summary>
-                    public long Inode;
-                /// <summary>x</summary>
-                    public int Mode;
-                /// <summary>x</summary>
-                    public int UserId;
-                /// <summary>x</summary>
-                    public int GroupId;
-                /// <summary>x</summary>
-                    public int HardlinkCount;
-                /// <summary>x</summary>
-                    public long Size;
-                /// <summary>x</summary>
-                    public long AccessTime;
-                /// <summary>x</summary>
-                    public long ModifiedTime;
-                /// <summary>x</summary>
-                    public long CreationTime;
-                /// <summary>x</summary>
-                    public long BlockSize;
-                /// <summary>x</summary>
-                    public int DeviceId;
-                /// <summary>x</summary>
-                    public int NumberOfBlocks;
-                /// <summary>x</summary>
-                    public int IsDirectory;
-                /// <summary>x</summary>
-                    public int IsFile;
-                /// <summary>x</summary>
-                    public int IsSymbolicLink;
-                /// <summary>x</summary>
-                    public int IsBlockDevice;
-                /// <summary>x</summary>
-                    public int IsCharacterDevice;
-                /// <summary>x</summary>
-                    public int IsNamedPipe;
-                /// <summary>x</summary>
-                    public int IsSocket;
-                /// <summary>x</summary>
-                    public int IsSetUid;
-                /// <summary>x</summary>
-                    public int IsSetGid;
-                /// <summary>x</summary>
-                    public int IsSticky;
+                    /// <summary>The inode of the filesystem item</summary>
+                    internal long Inode;
+                    /// <summary>The mode of the filesystem item</summary>
+                    internal int Mode;
+                    /// <summary>The user id of the filesystem item</summary>
+                    internal int UserId;
+                    /// <summary>The group id of the filesystem item</summary>
+                    internal int GroupId;
+                    /// <summary>The number of hard links to the filesystem item</summary>
+                    internal int HardlinkCount;
+                    /// <summary>The size in bytes of the filesystem item</summary>
+                    internal long Size;
+                    /// <summary>The time of the last access for the filesystem item</summary>
+                    internal long AccessTime;
+                    /// <summary>The time of the last modification for the filesystem item</summary>
+                    internal long ModifiedTime;
+                    /// <summary>The time of the last status change for the filesystem item</summary>
+                    internal long StatusChangeTime;
+                    /// <summary>When the file was created</summary>
+                    internal long BlockSize;
+                    /// <summary>The size in bytes of the file system</summary>
+                    internal int DeviceId;
+                    /// <summary>The device id for the filesystem item</summary>
+                    internal int NumberOfBlocks;
+                    /// <summary>The number of filesystem blocks that the filesystem item usese</summary>
+                    internal int IsDirectory;
+                    /// <summary>This filesystem item is a directory</summary>
+                    internal int IsFile;
+                    /// <summary>This filesystem item is a file</summary>
+                    internal int IsSymbolicLink;
+                    /// <summary>This filesystem item is a symbolic link</summary>
+                    internal int IsBlockDevice;
+                    /// <summary>This filesystem item is a block device</summary>
+                    internal int IsCharacterDevice;
+                    /// <summary>This filesystem item is a character device</summary>
+                    internal int IsNamedPipe;
+                    /// <summary>This filesystem item is a named pipe</summary>
+                    internal int IsSocket;
+                    /// <summary>This filesystem item is a socket</summary>
+                    internal int IsSetUid;
+                    /// <summary>This filesystem item will run as the the owner if executed</summary>
+                    internal int IsSetGid;
+                    /// <summary>The sticky bit is set on the filesystem item</summary>
+                    internal int IsSticky;
                 }
 
                 [DllImport(psLib, CharSet = CharSet.Ansi, SetLastError = true)]
